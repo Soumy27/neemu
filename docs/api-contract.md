@@ -1,4 +1,4 @@
-# Neemu API contract (draft 1)
+# Neemu API contract
 
 Proposed by soumy-claude, 9 Oct 2026, so the web app can be built against mock data before the backend is live. **Aditya owns the backend and has the final say on this file**; change it freely and post on the relay when you do. The web app's mocks in `web/src/api/mock.ts` follow this file.
 
@@ -66,7 +66,7 @@ interface NeemuSays {
 ## Proof photo
 
 - `POST /trees/{id}/proof-url` → `{ uploadUrl, key }` (S3 presigned PUT)
-- `POST /trees/{id}/proof` body `{ key, takenAt, lat, lng }` →
+- `POST /trees/{id}/proof` body `{ key, takenAt, lat, lng, accuracyM, handle? }` →. `handle` is who is sending; leave it out and the proof is taken as the adopter's. A buddy covering must send their own.
 
 ```ts
 interface ProofResult {
@@ -94,12 +94,15 @@ interface ProofResult {
 - **Same tree is checked by people.** A share of proofs (proposal: 1 in 5 at random, every first proof, and soft fails such as accuracy 30 to 50 m) get `review: "pending"` and go to a review queue. A reviewer sees the proof beside the reference photo and votes same / unsure / different. Reviewers: the organiser, or a water buddy (adopter of a nearby tree, never the proof's own adopter). Two "different" votes, or one from the organiser, undo the credit.
 - Photos come from the in-app camera only, not the gallery.
 - `lastWateredAt` and `streakDays` move only on an accepted proof or a code-justified skip.
-- Status thresholds (`thirsty`, `no_proof`, `likely_dead`) are fixed in code; Aditya lists them here when the backend starts.
+- Status thresholds, fixed in `backend/src/engine.py`: `thirsty` = Neemu asked today and has not been watered; `no_proof` = three asks in a row unanswered; `likely_dead` = health at 5 or below for seven days in a row; otherwise `fine`.
+- The ask: Neemu asks when the root zone is due to be 9.8 mm or more short of full by evening, and asks for that depth times the basin area, rounded up to half a litre. On this week's Delhi weather that is 5 to 9 L about every four days; in a May heat spell, 10 to 14 L daily.
 
 ## Finding and registering trees
 
 - `GET /drives/{driveId}/nearby?lat=&lng=` → `(Tree & { distanceM: number })[]`, unadopted first, nearest first.
-- `POST /drives/{driveId}/trees` body `{ name, species, lat, lng, accuracyM, referencePhotoKey }` → `Tree`. Used by the organiser's "register saplings" screen (walk the row once with a phone).
+- `POST /drives/{driveId}/photo-url` → `{ uploadUrl, key }` for the reference photo.
+- `POST /drives/{driveId}/trees` body `{ name, species, lat, lng, accuracyM, referencePhotoKey }` → `Tree`. Used by the organiser's "register saplings" screen (walk the row once with a phone). `accuracyM` and `referencePhotoKey` may be null. Optional: `soilDry: boolean` (the soil looks dry now, so Neemu asks today; default false), `basinM2` (default 0.5), `plantedOn`, `label`, `addedBy`.
+- A registered sapling has no known past, so its water balance starts on the day it is registered.
 
 ## Manual review
 
@@ -107,8 +110,10 @@ interface ProofResult {
 interface Review { proofId: string; treeId: string; treeName: string; proofPhotoUrl: string; referencePhotoUrl: string | null; takenAt: string; distanceM: number | null; accuracyM: number | null }
 ```
 
-- `GET /reviews?for=<handle>` → `Review[]` waiting for this person (organiser or buddy).
-- `POST /proofs/{proofId}/review` body `{ verdict: "same" | "unsure" | "different" }` → `{ review: ProofResult["review"] }`.
+- `GET /reviews?for=<handle>` → `Review[]` a water buddy can review: pending proofs for saplings within 150 m of one of theirs, never their own, not yet voted on.
+- `GET /drives/{driveId}/reviews` → `Review[]`, everything pending in the drive (the organiser's queue).
+- `POST /proofs/{proofId}/review` body `{ verdict: "same" | "unsure" | "different", by }` → `{ proofId, review }`. **`by` is required**: the reviewer's handle, or `"organiser"`. One organiser vote decides; buddies need two that agree. A proof that is not pending returns its state unchanged.
+- Which proofs go to review is decided by code: every sapling's first proof, any fix vaguer than 30 m, and one in five of the rest chosen by a hash of the proof id.
 
 ## Water buddies (adopters cover for each other)
 
@@ -122,9 +127,22 @@ interface Cover { id: string; treeId: string; from: string; to: string; date: st
 
 ## Organiser register (Pratham's screen)
 
-- `GET /drives/{driveId}` → `{ id, name, organiser, trees: Tree[], counts: Record<TreeStatus, number> }`
-- `POST /drives/{driveId}/remind` body `{ status: "thirsty" }` → `{ reminded: number }`
+- `GET /drives/{driveId}` → `{ id, name, organiser, asOf, replay, trees: Tree[], counts: Record<TreeStatus, number> }`. Takes `?date=` like `/today`. On this endpoint only, each tree also has `lastRemindedAt: string | null` and `lastProof: { at, photoUrl } | null` (a signed link good for an hour; fetch it fresh, do not store it).
+- `POST /drives/{driveId}/remind` body `{ status: "thirsty" | "no_proof" }` → `{ reminded: number, at: string }`. It stamps `lastRemindedAt` on each matching sapling that has an adopter. Nothing is sent to a phone yet.
 
 ## Errors
 
-`{ error: { code, message, source } }` with `source` naming the failing dependency (`bedrock`, `open-meteo`, `s3`), so the UI can say which one failed. No silent fallbacks.
+`{ error: { code, message, source } }` with `source` naming the failing dependency (`bedrock`, `open-meteo`, `s3`, or `api` for a bad request), so the UI can say which one failed. No silent fallbacks.
+
+## What is live
+
+Base URL: `https://uzrl7xynp7.execute-api.us-west-2.amazonaws.com`. Every route in this file answers. `backend/tests/smoke.py` runs the whole flow against the live API.
+
+Not live yet, and what you get instead:
+
+| Thing | Until it lands |
+|---|---|
+| The agent (Bedrock) | `spokenBy: "template"`. Numbers, ask and steps are the same; only the sentence is fixed text. `talk` answers three kinds of question: tomorrow, why, and anything else gets today's line. |
+| AI look at the photo | `sameTree: null`, `basinWet: null`, `leaves: "unclear"`. |
+| Sign-in (Cognito) | The API trusts `handle` and `by` in the request. |
+| Reminders reaching a phone | Only `lastRemindedAt` is stamped. |

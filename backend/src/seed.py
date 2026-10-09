@@ -75,15 +75,19 @@ def trees() -> list[dict]:
 
 def run() -> dict:
     ts = trees()
+    added = 0
     for t in ts:
-        store.put_tree(t)
-    store.put_drive({
+        if store.put_item(f"TREE#{t['id']}", "META", t, only_if_new=True):
+            added += 1
+            if t["adopter"]:
+                store.put_item(f"ADOPTER#{t['adopter']['handle']}", t["id"], {"driveId": DRIVE_ID})
+    store.put_item(f"DRIVE#{DRIVE_ID}", "META", {
         "id": DRIVE_ID,
         "name": "DTU Eco Club drive, Aug 2026",
         "organiser": "DTU Eco Club",
         "treeIds": [t["id"] for t in ts],
-    })
-    return {"drive": DRIVE_ID, "trees": len(ts)}
+    }, only_if_new=True)
+    return {"drive": DRIVE_ID, "trees": len(ts), "added": added}
 
 
 def handler(event, context):
