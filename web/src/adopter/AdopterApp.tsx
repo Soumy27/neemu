@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, SourceError, usingMock } from "../api/client";
+import { api, partlyLive, SourceError, usingMock } from "../api/client";
 import { scenarioLabel, scenario } from "../api/mock";
 import { shareCard } from "./shareCard";
 import type { NeemuSays, ProofResult, Tree } from "../api/types";
@@ -111,7 +111,7 @@ export function AdopterApp({ treeId }: { treeId: string }) {
 
   return (
     <div className="adopter">
-      {usingMock && <div className="banner">{scenarioLabel[scenario]}</div>}
+      {usingMock && <div className="banner">{partlyLive ? (scenario === "today" ? "Live: weather, water and Neemu's voice come from the Neemu API on AWS. Some screens still use examples." : scenarioLabel[scenario].replace("The tree and its owner are examples.", "Live from the Neemu API.")) : scenarioLabel[scenario]}</div>}
       {says?.heatwave?.active && (
         <div className="boss" role="status">
           <strong>🔥 Heat day boss · {says.heatwave.tMaxC} °C</strong>

@@ -3,8 +3,14 @@
 import * as mock from "./mock";
 import type { ApiError, Buddy, Cover, Drive, NeemuSays, ProofResult, Review, Tree, TreeStatus } from "./types";
 
-const BASE = import.meta.env.VITE_API_URL as string | undefined;
-export const usingMock = !BASE;
+const API = import.meta.env.VITE_API_URL as string | undefined;
+// VITE_API_LIVE lists the calls the backend already serves (comma-separated, e.g. "getTree,today,getDrive");
+// the rest stay on the mock. Unset means every call goes to the API.
+const LIVE = (import.meta.env.VITE_API_LIVE as string | undefined)?.split(",").map((x) => x.trim());
+const live = (name: string) => !!API && (!LIVE || LIVE.includes(name));
+export const usingMock = !API || !!LIVE;
+export const partlyLive = !!API && !!LIVE;
+const replayDate = ({ heatwave: "2026-05-19", rain: "2026-08-03", today: null } as const)[mock.scenario];
 
 export class SourceError extends Error {
   source: string;
@@ -15,7 +21,7 @@ export class SourceError extends Error {
 }
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${API}${path}`, {
     ...init,
     headers: { "content-type": "application/json", ...init?.headers },
   });
@@ -31,16 +37,16 @@ const post = (body: unknown): RequestInit => ({ method: "POST", body: JSON.strin
 
 export const api = {
   getTree: (id: string): Promise<Tree> =>
-    BASE ? call(`/trees/${id}`) : mock.getTree(id),
+    live('getTree') ? call(`/trees/${id}`) : mock.getTree(id),
 
   adopt: (id: string, handle: string): Promise<Tree> =>
-    BASE ? call(`/trees/${id}/adopt`, post({ handle })) : mock.adopt(id, handle),
+    live('adopt') ? call(`/trees/${id}/adopt`, post({ handle })) : mock.adopt(id, handle),
 
   today: (id: string): Promise<NeemuSays> =>
-    BASE ? call(`/trees/${id}/today`) : mock.today(id),
+    live('today') ? call(`/trees/${id}/today${replayDate ? `?date=${replayDate}` : ""}`) : mock.today(id),
 
   talk: (id: string, text: string, lang: "hi" | "en"): Promise<NeemuSays> =>
-    BASE ? call(`/trees/${id}/talk`, post({ text, lang })) : mock.talk(id, text),
+    live('talk') ? call(`/trees/${id}/talk`, post({ text, lang })) : mock.talk(id, text),
 
   // The photo comes from the in-app camera; position and its accuracy go with it.
   async proof(id: string, file: File): Promise<ProofResult> {
@@ -50,7 +56,7 @@ export const api = {
     const lat = pos?.coords.latitude ?? null;
     const lng = pos?.coords.longitude ?? null;
     const accuracyM = pos?.coords.accuracy ?? null;
-    if (!BASE) {
+    if (!live("proof")) {
       // In demo mode the phone is not at DTU, so distance is left to the mock.
       return mock.proof(id, file, { distanceM: null, accuracyM: accuracyM && accuracyM <= 50 ? accuracyM : null });
     }
@@ -61,23 +67,23 @@ export const api = {
   },
 
   buddies: (id: string): Promise<Buddy[]> =>
-    BASE ? call(`/trees/${id}/buddies`) : mock.buddies(id),
+    live('buddies') ? call(`/trees/${id}/buddies`) : mock.buddies(id),
 
   cover: (id: string, toHandle: string): Promise<Cover> =>
-    BASE ? call(`/trees/${id}/cover`, post({ toHandle })) : mock.cover(id, toHandle),
+    live('cover') ? call(`/trees/${id}/cover`, post({ toHandle })) : mock.cover(id, toHandle),
 
   reviews: (handle: string): Promise<Review[]> =>
-    BASE ? call(`/reviews?for=${encodeURIComponent(handle)}`) : mock.reviews(handle),
+    live('reviews') ? call(`/reviews?for=${encodeURIComponent(handle)}`) : mock.reviews(handle),
 
   review: (proofId: string, verdict: "same" | "unsure" | "different"): Promise<{ review: ProofResult["review"] }> =>
-    BASE ? call(`/proofs/${proofId}/review`, post({ verdict })) : mock.review(proofId, verdict),
+    live('review') ? call(`/proofs/${proofId}/review`, post({ verdict })) : mock.review(proofId, verdict),
 
   nearby: (driveId: string, lat: number, lng: number): Promise<(Tree & { distanceM: number })[]> =>
-    BASE ? call(`/drives/${driveId}/nearby?lat=${lat}&lng=${lng}`) : mock.nearby(driveId, lat, lng),
+    live('nearby') ? call(`/drives/${driveId}/nearby?lat=${lat}&lng=${lng}`) : mock.nearby(driveId, lat, lng),
 
   getDrive: (id: string): Promise<Drive> =>
-    BASE ? call(`/drives/${id}`) : mock.getDrive(id),
+    live('getDrive') ? call(`/drives/${id}`) : mock.getDrive(id),
 
   remind: (id: string, status: TreeStatus): Promise<{ reminded: number }> =>
-    BASE ? call(`/drives/${id}/remind`, post({ status })) : mock.remind(id, status),
+    live('remind') ? call(`/drives/${id}/remind`, post({ status })) : mock.remind(id, status),
 };
