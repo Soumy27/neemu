@@ -66,7 +66,8 @@ def run_balance(meta: dict, proofs: list[dict], as_of: date, replay: bool):
         start_mm = DRY_START_MM if meta.get("soilDry") else None
 
     streak_from = adopted or (days[0].day if meta.get("adopter") else None)
-    states = engine.simulate(days, meta["basinM2"], watered, streak_from, start_mm)
+    states = engine.simulate(days, meta["basinM2"], watered, streak_from, start_mm,
+                             meta.get("cropFactor") or engine.CROP_FACTOR)
     upto = [s for s in states if s.day <= as_of]
     ahead = [s for s in states if s.day > as_of]
     return upto, ahead, planted

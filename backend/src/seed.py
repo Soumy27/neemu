@@ -13,12 +13,15 @@ DRIVE_ID = "dtu-eco-2026"
 PLANTED_ON = "2026-08-14"
 BASIN_M2 = 0.5
 
+# name, Hindi name, species, crop factor (Kc). Kc is how thirsty the species is next to the
+# reference grass that ET0 describes: neem and amla are drought-hardy, arjun grows on riverbanks.
+# Approximate values for young trees, in the range FAO-56 gives for orchards with bare soil.
 KINDS = [
-    ("Neemu", "नीमू", "Neem (Azadirachta indica)"),
-    ("Jamun", "जामुन", "Jamun (Syzygium cumini)"),
-    ("Peepu", "पीपू", "Peepal (Ficus religiosa)"),
-    ("Amla", "आँवला", "Amla (Phyllanthus emblica)"),
-    ("Arjun", "अर्जुन", "Arjun (Terminalia arjuna)"),
+    ("Neemu", "नीमू", "Neem (Azadirachta indica)", 0.6),
+    ("Jamun", "जामुन", "Jamun (Syzygium cumini)", 0.8),
+    ("Peepu", "पीपू", "Peepal (Ficus religiosa)", 0.7),
+    ("Amla", "आँवला", "Amla (Phyllanthus emblica)", 0.65),
+    ("Arjun", "अर्जुन", "Arjun (Terminalia arjuna)", 0.9),
 ]
 ADOPTERS = ["riya", "kabir", "ananya", "dev", "meher", "zoya", "arnav"]
 
@@ -35,7 +38,7 @@ PROFILES = [
 
 # The sapling the adopter screen opens. Nobody has adopted it yet.
 DEMO_TREE = "dtu-gate3-017"
-DEMO_PROFILE = {"delay": 2, "stopped": 3}
+DEMO_PROFILE = {"delay": 0, "stopped": 6}   # cared for until six days ago, so in dry weather it is asking
 
 
 def tree_id(i: int) -> str:
@@ -45,7 +48,7 @@ def tree_id(i: int) -> str:
 def trees() -> list[dict]:
     out = []
     for i in range(40):
-        name, name_hi, species = KINDS[0] if tree_id(i) == DEMO_TREE else KINDS[i % len(KINDS)]
+        name, name_hi, species, kc = KINDS[0] if tree_id(i) == DEMO_TREE else KINDS[i % len(KINDS)]
         tid = tree_id(i)
         demo = tid == DEMO_TREE
         profile = DEMO_PROFILE if demo else PROFILES[i % len(PROFILES)]
@@ -65,6 +68,7 @@ def trees() -> list[dict]:
                 "spotHi": "गेट 3",
             },
             "basinM2": BASIN_M2,
+            "cropFactor": kc,
             "adopter": None if demo or abandoned else {"handle": ADOPTERS[i % len(ADOPTERS)]},
             "adoptedOn": None,          # set when a real person adopts through the API
             "profile": profile,
@@ -81,6 +85,8 @@ def run() -> dict:
             added += 1
             if t["adopter"]:
                 store.put_item(f"ADOPTER#{t['adopter']['handle']}", t["id"], {"driveId": DRIVE_ID})
+        else:   # already there (maybe adopted by a real person): refresh only what describes the species and example care
+            store.update_tree(t["id"], cropFactor=t["cropFactor"], profile=t["profile"])
     for h in ADOPTERS:                 # example adopters' names cannot be claimed by a real person
         store.put_item(f"HANDLE#{h}", "META", {"sub": "example"}, only_if_new=True)
     store.put_item(f"DRIVE#{DRIVE_ID}", "META", {

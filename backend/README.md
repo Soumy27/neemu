@@ -53,7 +53,7 @@ depletion is due to pass 9.8 mm by evening, and asks for `depletion x basin area
 | Field capacity, wilting point | 0.28, 0.14 | loam |
 | Total available water | 28 mm | |
 | Ask threshold | 9.8 mm | 35% of the total |
-| Crop factor Kc | 0.7 | young tree, mostly bare basin |
+| Crop factor Kc | 0.6 to 0.9 by species, 0.7 if unknown | how thirsty the species is: neem 0.6, amla 0.65, peepal 0.7, jamun 0.8, arjun 0.9 |
 | Effective rain | 2 mm or more in a day | lighter showers evaporate |
 | Heat day | max 40 °C or more | not an official heatwave |
 

@@ -148,14 +148,15 @@ def get_drive(drive_id, query, body):
 
 def remind(drive_id, query, body):
     status = (body or {}).get("status")
-    if status not in ("thirsty", "no_proof"):
-        raise BadRequest("bad_status", "Reminders go to saplings that are thirsty or have no proof.")
+    wanted = {"thirsty": ("thirsty",), "no_proof": ("no_proof",), "needs_water": ("thirsty", "no_proof")}.get(status)
+    if not wanted:
+        raise BadRequest("bad_status", "Reminders go to saplings that are thirsty, have no proof, or both (needs_water).")
     drive = get_drive(drive_id, None, None)
     stamp = now_iso()
     reminded = 0
     notified = 0
     for t in drive["trees"]:
-        if t["status"] == status and t["adopter"]:
+        if t["status"] in wanted and t["adopter"]:
             store.update_tree(t["id"], lastRemindedAt=stamp)
             reminded += 1
             litres = speak._n(t["water"]["litresNeeded"])

@@ -128,7 +128,7 @@ interface Cover { id: string; treeId: string; from: string; to: string; date: st
 ## Organiser register (Pratham's screen)
 
 - `GET /drives/{driveId}` → `{ id, name, organiser, asOf, replay, trees: Tree[], counts: Record<TreeStatus, number> }`. Takes `?date=` like `/today`. On this endpoint only, each tree also has `lastRemindedAt: string | null` and `lastProof: { at, photoUrl } | null` (a signed link good for an hour; fetch it fresh, do not store it).
-- `POST /drives/{driveId}/remind` body `{ status: "thirsty" | "no_proof" }` → `{ reminded: number, at: string }`. It stamps `lastRemindedAt` on each matching sapling that has an adopter. Nothing is sent to a phone yet.
+- `POST /drives/{driveId}/remind` body `{ status: "thirsty" | "no_proof" | "needs_water" }` → `{ reminded, notified, at }`. `needs_water` is both: every adopted sapling that has asked and not been watered. It stamps `lastRemindedAt` on each matching sapling that has an adopter. Nothing is sent to a phone yet.
 
 ## Notifications (Web Push)
 
