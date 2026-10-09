@@ -1,5 +1,5 @@
 // Organiser-only calls: registering saplings and the same-tree review queue.
-// Shapes follow docs/api-contract.md; the one path marked "assumed" is not in it yet.
+// Paths as agreed with the backend on the relay (9 Oct): photo-url, drive reviews, and `by` until sign-in exists.
 
 import { api, SourceError, usingMock } from "../api/client";
 import type { ApiError, Drive, Tree, TreeStatus } from "../api/types";
@@ -66,7 +66,6 @@ export const organiserApi = {
 
   async addSapling(driveId: string, s: NewSapling): Promise<Tree> {
     if (usingMock) return mockAddSapling(driveId, s);
-    // Assumed: an upload URL for reference photos, like the proof one.
     const { uploadUrl, key } = await call<{ uploadUrl: string; key: string }>(`/drives/${driveId}/photo-url`, post({}));
     const put = await fetch(uploadUrl, { method: "PUT", body: s.photo, headers: { "content-type": s.photo.type } });
     if (!put.ok) throw new SourceError("s3", `Photo upload failed (HTTP ${put.status})`);
@@ -75,12 +74,11 @@ export const organiserApi = {
     }));
   },
 
-  // The organiser reviews under the drive's organiser name, as the contract's `for` handle.
   getReviews: (drive: Drive): Promise<Review[]> =>
-    usingMock ? mockReviews(drive.id) : call(`/reviews?for=${encodeURIComponent(drive.organiser)}`),
+    usingMock ? mockReviews(drive.id) : call(`/drives/${drive.id}/reviews`),
 
   review: (proofId: string, verdict: ReviewVerdict): Promise<{ review: ReviewState }> =>
-    usingMock ? mockReview(proofId, verdict) : call(`/proofs/${proofId}/review`, post({ verdict })),
+    usingMock ? mockReview(proofId, verdict) : call(`/proofs/${proofId}/review`, post({ verdict, by: "organiser" })),
 };
 
 // ---- Mock, used until the API is live. Added saplings live in this browser tab only. ----
