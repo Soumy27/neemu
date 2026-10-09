@@ -1,0 +1,69 @@
+/* Organiser register and QR tag sheet. Colours and cards come from index.css. */
+
+.organiser, .tags { max-width: 1180px; margin: 0 auto; padding: 0 16px 48px; }
+
+.org-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin: 16px 0 12px; }
+a.button { display: inline-block; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); text-decoration: none; white-space: nowrap; }
+.organiser a:not(.button) { color: var(--green); }
+
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.tile { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 14px; border-radius: 14px; }
+.tile[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.tile-count { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.tile-label { font-weight: 600; }
+
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+.dot-fine { background: var(--green); }
+.dot-thirsty { background: var(--amber); }
+.dot-no_proof { background: var(--red); }
+.dot-likely_dead { background: #7a7f78; }
+
+.pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.pill-fine { background: var(--green-soft); color: var(--green); }
+.pill-thirsty { background: var(--amber-soft); color: var(--amber); }
+.pill-no_proof { background: var(--red-soft); color: var(--red); }
+.pill-likely_dead { background: var(--line); color: var(--muted); }
+
+.remind { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.remind h2, .remind p { margin: 0; }
+.remind .result { flex-basis: 100%; margin: 0; }
+
+.org-main { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 12px; align-items: start; }
+.map-col { position: sticky; top: 12px; }
+.register-map { height: 440px; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
+.picked { margin-bottom: 0; }
+.table-col { margin: 0; }
+.table-col .name-row { align-items: center; margin-bottom: 8px; }
+.table-col h2 { margin: 0; }
+
+.table-scroll { overflow-x: auto; }
+.register { width: 100%; border-collapse: collapse; font-size: 14px; }
+.register th { text-align: left; font-weight: 600; color: var(--muted); font-size: 13px; }
+.register th, .register td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.register .num { text-align: right; font-variant-numeric: tabular-nums; }
+.register tbody tr { cursor: pointer; }
+.register tbody tr:hover, .register tr.is-selected { background: var(--green-soft); }
+.register code { font-size: 12px; }
+
+@media (max-width: 860px) {
+  .tiles { grid-template-columns: repeat(2, 1fr); }
+  .org-main { grid-template-columns: minmax(0, 1fr); }
+  .map-col { position: static; }
+  .register-map { height: 320px; }
+}
+
+/* QR tags: always black on white, on screen and on paper. */
+.tag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.tag { background: #fff; color: #000; border: 1px dashed #888; border-radius: 8px; padding: 10px; text-align: center; break-inside: avoid; }
+.qr { width: 100%; height: auto; display: block; shape-rendering: crispEdges; }
+.tag-name { font-size: 20px; font-weight: 700; margin-top: 4px; }
+.tag-hi { font-size: 13px; }
+.tag-id { font-family: ui-monospace, Consolas, monospace; font-size: 13px; margin-top: 2px; }
+
+@media print {
+  @page { size: A4; margin: 10mm; }
+  body { background: #fff; }
+  .no-print { display: none; }
+  .tags { max-width: none; padding: 0; }
+  .tag-grid { grid-template-columns: repeat(3, 1fr); gap: 6mm; }
+}

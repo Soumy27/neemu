@@ -1,7 +1,7 @@
 // Talks to the real API when VITE_API_URL is set, otherwise to the mock.
 
 import * as mock from "./mock";
-import type { ApiError, Drive, NeemuSays, ProofResult, Tree } from "./types";
+import type { ApiError, Drive, NeemuSays, ProofResult, Tree, TreeStatus } from "./types";
 
 const BASE = import.meta.env.VITE_API_URL as string | undefined;
 export const usingMock = !BASE;
@@ -60,4 +60,7 @@ export const api = {
 
   getDrive: (id: string): Promise<Drive> =>
     BASE ? call(`/drives/${id}`) : mock.getDrive(id),
+
+  remind: (id: string, status: TreeStatus): Promise<{ reminded: number }> =>
+    BASE ? call(`/drives/${id}/remind`, post({ status })) : mock.remind(id, status),
 };

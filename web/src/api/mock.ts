@@ -156,16 +156,63 @@ export async function proof(_id: string, file: File): Promise<ProofResult> {
   return { verdict: "accepted", qrMatched: true, basinWet: true, leaves: "healthy", reasons: [], distanceM: 4, receivedAt: new Date().toISOString(), tree: clone(tree) };
 }
 
+// Illustrative register: 40 saplings around DTU. The tree the adopter screen opens is the live one.
+const kinds = [
+  ["Neemu", "Neem (Azadirachta indica)"],
+  ["Jamun", "Jamun (Syzygium cumini)"],
+  ["Peepu", "Peepal (Ficus religiosa)"],
+  ["Amla", "Amla (Phyllanthus emblica)"],
+  ["Arjun", "Arjun (Terminalia arjuna)"],
+];
+const adopters = ["riya", "kabir", "ananya", "dev", "meher", "zoya", "arnav"];
+const daysAgo = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString();
+
+function driveTree(i: number): Tree {
+  const id = `dtu-gate3-${String(i + 1).padStart(3, "0")}`;
+  if (id === tree.id) return clone(tree);
+  const statuses: TreeStatus[] = ["fine", "thirsty", "no_proof", "likely_dead"];
+  const status = statuses[[0, 0, 0, 1, 1, 2, 0, 3][i % 8]];
+  const [name, species] = kinds[i % kinds.length];
+  const by = {
+    fine: { health: 72 + (i * 7) % 24, deficitMm: 0, litres: 0, watered: i % 2, streak: 3 + (i % 9) },
+    thirsty: { health: 48 + (i * 5) % 16, deficitMm: 3.6 + (i % 4) * 0.4, litres: 2, watered: 3 + (i % 2), streak: 0 },
+    no_proof: { health: 30 + (i * 3) % 14, deficitMm: 6.2 + (i % 3) * 0.5, litres: 3, watered: 6 + (i % 4), streak: 0 },
+    likely_dead: { health: 6 + (i % 8), deficitMm: 11.5, litres: 6, watered: 21 + (i % 9), streak: 0 },
+  }[status];
+  return {
+    ...clone(tree),
+    id,
+    name,
+    species,
+    status,
+    health: by.health,
+    growthStage: status === "fine" ? 3 : 2,
+    streakDays: by.streak,
+    adopter: status === "likely_dead" && i % 16 === 7 ? null : { handle: adopters[i % adopters.length] },
+    location: {
+      lat: 28.7495 + (i % 8) * 0.00015 + (((i * 37) % 11) - 5) * 0.00002,
+      lng: 77.1165 + Math.floor(i / 8) * 0.0002 + (((i * 53) % 13) - 6) * 0.00002,
+      label: "DTU, Gate 3, Delhi",
+    },
+    water: {
+      ...tree.water,
+      soilWaterMm: Math.max(0.5, 10.3 - by.deficitMm),
+      deficitMm: by.deficitMm,
+      litresNeeded: by.litres,
+      lastWateredAt: daysAgo(by.watered),
+    },
+  };
+}
+
 export async function getDrive(id: string): Promise<Drive> {
   await wait(300);
-  const statuses: TreeStatus[] = ["fine", "thirsty", "no_proof", "likely_dead"];
-  const trees: Tree[] = Array.from({ length: 40 }, (_, i) => ({
-    ...clone(tree),
-    id: `dtu-gate3-${String(i + 1).padStart(3, "0")}`,
-    status: statuses[[0, 0, 0, 1, 1, 2, 0, 3][i % 8]],
-    location: { lat: 28.7495 + (i % 8) * 0.00015, lng: 77.1165 + Math.floor(i / 8) * 0.0002, label: "DTU" },
-  }));
+  const trees = Array.from({ length: 40 }, (_, i) => driveTree(i));
   const counts = { fine: 0, thirsty: 0, no_proof: 0, likely_dead: 0 } as Record<TreeStatus, number>;
   trees.forEach((t) => counts[t.status]++);
   return { id, name: "DTU Eco Club drive, Aug 2026", organiser: "DTU Eco Club", trees, counts };
+}
+
+export async function remind(id: string, status: TreeStatus): Promise<{ reminded: number }> {
+  const drive = await getDrive(id);
+  return { reminded: drive.trees.filter((t) => t.status === status && t.adopter).length };
 }
