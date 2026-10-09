@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
 import { AdopterApp } from "./adopter/AdopterApp";
+import { NearbyPicker } from "./adopter/NearbyPicker";
 
 // The organiser screens load on demand so the map library stays out of the adopter app.
 const OrganiserApp = lazy(() => import("./organiser/OrganiserApp"));
@@ -18,5 +19,8 @@ export default function App() {
       </Suspense>
     );
   }
-  return <AdopterApp treeId={params.get("tree") ?? "dtu-gate3-017"} />;
+  // ?drive=<id> is the one link per drive (WhatsApp group or gate poster): saplings near you.
+  const tree = params.get("tree");
+  if (!tree && params.get("drive")) return <NearbyPicker driveId={params.get("drive")!} />;
+  return <AdopterApp treeId={tree ?? "dtu-gate3-017"} />;
 }
