@@ -70,11 +70,24 @@ Resources:
               Action: polly:SynthesizeSpeech
               Resource: "*"
       Events:
-        GetTree:   { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET,  Path: "/trees/{id}" } }
-        Adopt:     { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/trees/{id}/adopt" } }
-        Today:     { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET,  Path: "/trees/{id}/today" } }
-        GetDrive:  { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET,  Path: "/drives/{id}" } }
-        Remind:    { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/drives/{id}/remind" } }
+        GetTree: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET, Path: "/trees/{id}" } }
+        Adopt: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/trees/{id}/adopt" } }
+        Today: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET, Path: "/trees/{id}/today" } }
+        Talk: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/trees/{id}/talk" } }
+        ProofUrl: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/trees/{id}/proof-url" } }
+        Proof: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/trees/{id}/proof" } }
+        Buddies: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET, Path: "/trees/{id}/buddies" } }
+        Cover: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/trees/{id}/cover" } }
+        CoverAccept: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/covers/{id}/accept" } }
+        CoverDecline: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/covers/{id}/decline" } }
+        GetDrive: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET, Path: "/drives/{id}" } }
+        Remind: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/drives/{id}/remind" } }
+        Nearby: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET, Path: "/drives/{id}/nearby" } }
+        PhotoUrl: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/drives/{id}/photo-url" } }
+        Register: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/drives/{id}/trees" } }
+        DriveReviews: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET, Path: "/drives/{id}/reviews" } }
+        MyReviews: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET, Path: "/reviews" } }
+        Review: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/proofs/{id}/review" } }
 
   # Loads the example drive. Run once after the first deploy.
   SeedFunction:

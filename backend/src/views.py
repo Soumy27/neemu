@@ -1,9 +1,26 @@
 """Turn a stored sapling plus real weather into the shapes in docs/api-contract.md."""
 from datetime import date, datetime, timedelta
 
+import os
+
+import aws
 import engine
 import weather
 from weather import IST
+
+DRY_START_MM = 12.0   # "the soil looks dry" at registration: just past the ask threshold
+
+
+def counts(p: dict) -> bool:
+    """A proof waters the tree unless a person reviewed it and said it was a different tree."""
+    return p.get("verdict") == "accepted" and p.get("review") != "rejected"
+
+
+def signed_get(key: str | None) -> str | None:
+    if not key:
+        return None
+    return aws.s3().generate_presigned_url(
+        "get_object", Params={"Bucket": os.environ["MEDIA_BUCKET"], "Key": key}, ExpiresIn=3600)
 
 
 def _ist_day(iso: str) -> date:
@@ -19,7 +36,7 @@ def run_balance(meta: dict, proofs: list[dict], as_of: date, replay: bool):
         planted = planted.replace(year=planted.year - 1)
 
     adopted = date.fromisoformat(meta["adoptedOn"]) if meta.get("adoptedOn") and not replay else None
-    real = {} if replay else {_ist_day(p["receivedAt"]) for p in proofs if p.get("verdict") == "accepted"}
+    real = {} if replay else {_ist_day(p["receivedAt"]) for p in proofs if counts(p)}
     profile = meta.get("profile") or {"delay": 0, "stopped": 9999}
     anchor = adopted or as_of           # example care stops where a real adopter takes over
     stopped = profile["stopped"]
@@ -41,8 +58,15 @@ def run_balance(meta: dict, proofs: list[dict], as_of: date, replay: bool):
         waiting["n"] += 1
         return 0.0
 
+    # A sapling registered through the app has no known past: the balance starts on that day.
+    start_mm = None
+    registered = date.fromisoformat(meta["registeredOn"]) if meta.get("registeredOn") and not replay else None
+    if registered:
+        days = [w for w in days if w.day >= registered] or days[-1:]
+        start_mm = DRY_START_MM if meta.get("soilDry") else None
+
     streak_from = adopted or (days[0].day if meta.get("adopter") else None)
-    states = engine.simulate(days, meta["basinM2"], watered, streak_from)
+    states = engine.simulate(days, meta["basinM2"], watered, streak_from, start_mm)
     upto = [s for s in states if s.day <= as_of]
     ahead = [s for s in states if s.day > as_of]
     return upto, ahead, planted
@@ -51,7 +75,7 @@ def run_balance(meta: dict, proofs: list[dict], as_of: date, replay: bool):
 def last_watered(states, proofs: list[dict], replay: bool):
     """Time of the last watering: a real proof if there is one, else the example history."""
     if not replay:
-        real = sorted(p["receivedAt"] for p in proofs if p.get("verdict") == "accepted")
+        real = sorted(p["receivedAt"] for p in proofs if counts(p))
         if real:
             return real[-1]
     for s in reversed(states):
@@ -73,6 +97,7 @@ def tree_view(meta: dict, proofs: list[dict], as_of: date, replay: bool):
         "location": {k: meta["location"][k] for k in ("lat", "lng", "label")},
         "basinM2": meta["basinM2"],
         "adopter": meta.get("adopter"),
+        "referencePhotoUrl": signed_get(meta.get("referencePhotoKey")),
         "status": engine.status_of(s),
         "health": round(s.health),
         "growthStage": engine.growth_stage(planted, as_of, s.health),

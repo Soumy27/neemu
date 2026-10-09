@@ -90,3 +90,55 @@ def get_trees(tree_ids: list[str]) -> list[dict]:
 
 def all_proofs(tree_ids: list[str]) -> dict:
     return {t: proofs(t) for t in tree_ids}
+
+
+def get_item(pk: str, sk: str = "META"):
+    return _plain(table().get_item(Key={"pk": pk, "sk": sk}).get("Item"))
+
+
+def put_item(pk: str, sk: str, item: dict, only_if_new: bool = False) -> bool:
+    """Write an item. With only_if_new, return False instead of overwriting."""
+    kwargs = {"Item": _dec({**item, "pk": pk, "sk": sk})}
+    if only_if_new:
+        kwargs["ConditionExpression"] = "attribute_not_exists(pk)"
+    try:
+        table().put_item(**kwargs)
+        return True
+    except table().meta.client.exceptions.ConditionalCheckFailedException:
+        return False
+
+
+def delete_item(pk: str, sk: str):
+    table().delete_item(Key={"pk": pk, "sk": sk})
+
+
+def query(pk: str, prefix: str = "") -> list[dict]:
+    cond = Key("pk").eq(pk)
+    if prefix:
+        cond = cond & Key("sk").begins_with(prefix)
+    items, kwargs = [], {"KeyConditionExpression": cond}
+    while True:
+        r = table().query(**kwargs)
+        items += r["Items"]
+        if "LastEvaluatedKey" not in r:
+            return _plain(items)
+        kwargs["ExclusiveStartKey"] = r["LastEvaluatedKey"]
+
+
+def update_proof(tree_id: str, received_at: str, **fields):
+    names = {f"#{k}": k for k in fields}
+    values = {f":{k}": _dec(v) for k, v in fields.items()}
+    table().update_item(
+        Key={"pk": f"TREE#{tree_id}", "sk": f"PROOF#{received_at}"},
+        UpdateExpression="SET " + ", ".join(f"#{k} = :{k}" for k in fields),
+        ExpressionAttributeNames=names, ExpressionAttributeValues=values,
+    )
+
+
+def add_tree_to_drive(drive_id: str, tree_id: str):
+    table().update_item(
+        Key={"pk": f"DRIVE#{drive_id}", "sk": "META"},
+        UpdateExpression="SET treeIds = list_append(treeIds, :t)",
+        ExpressionAttributeValues={":t": [tree_id]},
+        ConditionExpression="attribute_exists(pk)",
+    )

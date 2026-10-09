@@ -89,13 +89,15 @@ def simulate(
     basin_m2: float,
     watered: Callable[[date, float], float],
     streak_from: Optional[date] = None,
+    start_depletion_mm: Optional[float] = None,
 ) -> list[DayState]:
     """Run the balance over consecutive days.
 
     watered(day, litres_asked) returns the litres actually poured that day (0 if none).
     streak_from is the first day that counts towards the streak (the adoption day).
+    start_depletion_mm is how dry the soil is on the first day, when someone has looked.
     """
-    depletion = RAW_MM / 2
+    depletion = RAW_MM / 2 if start_depletion_mm is None else min(TAW_MM, max(0.0, start_depletion_mm))
     health = START_HEALTH
     unanswered = 0
     streak = 0
