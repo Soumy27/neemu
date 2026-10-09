@@ -6,6 +6,7 @@ engine.py; nothing here asks a model for a figure.
 import json
 
 import agent
+import auth
 import drives
 import engine
 import proofs
@@ -202,7 +203,9 @@ def handler(event, context):
             raise BadRequest("bad_json", "Request body is not valid JSON.")
         if not isinstance(body, dict):
             raise BadRequest("bad_json", "Request body must be a JSON object.")
-        result = fn((event.get("pathParameters") or {}).get("id", ""), event.get("queryStringParameters") or {}, body)
+        query = dict(event.get("queryStringParameters") or {})
+        auth.apply(route, event, query, body)
+        result = fn((event.get("pathParameters") or {}).get("id", ""), query, body)
         return _reply(200, result)
     except SourceError as e:
         return _reply(e.status, {"error": {"code": e.code, "message": e.message, "source": e.source}})

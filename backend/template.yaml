@@ -2,6 +2,17 @@ AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: Neemu - the tree that calls you when it's thirsty. API, water balance, voice.
 
+Parameters:
+  RequireAuth:
+    Type: String
+    Default: "off"
+    AllowedValues: ["on", "off"]
+    Description: on = every write needs a Cognito sign-in. off = requests without a token are believed.
+  AppUrl:
+    Type: String
+    Default: https://main.d1wy94gbpeilv8.amplifyapp.com
+    Description: Where the web app is hosted; Cognito sends people back here after sign-in.
+
 Globals:
   Function:
     Runtime: python3.12
@@ -13,6 +24,7 @@ Globals:
       Variables:
         TABLE: !Ref Table
         MEDIA_BUCKET: !Ref MediaBucket
+        REQUIRE_AUTH: !Ref RequireAuth
 
 Resources:
   Table:
@@ -46,13 +58,57 @@ Resources:
           - { Id: expire-proofs, Prefix: proofs/, Status: Enabled, ExpirationInDays: 30 }
           - { Id: expire-audio, Prefix: audio/, Status: Enabled, ExpirationInDays: 30 }
 
+  # ---- sign-in: Cognito user pool with its hosted sign-in page ----
+  Users:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: neemu-users
+      UsernameAttributes: [email]
+      AutoVerifiedAttributes: [email]
+      AdminCreateUserConfig: { AllowAdminCreateUserOnly: false }
+      Policies:
+        PasswordPolicy: { MinimumLength: 8, RequireLowercase: true, RequireNumbers: true, RequireSymbols: false, RequireUppercase: false }
+      AccountRecoverySetting:
+        RecoveryMechanisms: [{ Name: verified_email, Priority: 1 }]
+
+  UsersDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      UserPoolId: !Ref Users
+      Domain: neemu-saplings
+
+  WebClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref Users
+      ClientName: neemu-web
+      GenerateSecret: false
+      SupportedIdentityProviders: [COGNITO]
+      ExplicitAuthFlows: [ALLOW_USER_SRP_AUTH, ALLOW_REFRESH_TOKEN_AUTH, ALLOW_ADMIN_USER_PASSWORD_AUTH]
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows: [code]
+      AllowedOAuthScopes: [openid, email, aws.cognito.signin.user.admin]
+      CallbackURLs: [!Sub "${AppUrl}/", "http://localhost:5173/"]
+      LogoutURLs: [!Sub "${AppUrl}/", "http://localhost:5173/"]
+      AccessTokenValidity: 12
+      IdTokenValidity: 12
+      RefreshTokenValidity: 30
+      TokenValidityUnits: { AccessToken: hours, IdToken: hours, RefreshToken: days }
+
+  Organisers:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      UserPoolId: !Ref Users
+      GroupName: organisers
+      Description: People who run a plantation drive.
+
   Api:
     Type: AWS::Serverless::HttpApi
     Properties:
       CorsConfiguration:
         AllowOrigins: ["*"]
         AllowMethods: [GET, POST, OPTIONS]
-        AllowHeaders: [content-type]
+        AllowHeaders: [content-type, authorization]
         MaxAge: 600
       DefaultRouteSettings:
         ThrottlingBurstLimit: 40
@@ -191,4 +247,7 @@ Outputs:
   Table: { Value: !Ref Table }
   MediaBucket: { Value: !Ref MediaBucket }
   SeedFunction: { Value: !Ref SeedFunction }
+  UserPoolId: { Value: !Ref Users }
+  WebClientId: { Value: !Ref WebClient }
+  SignInDomain: { Value: !Sub "neemu-saplings.auth.${AWS::Region}.amazoncognito.com" }
   MorningCheck: { Value: !Ref MorningCheck }
