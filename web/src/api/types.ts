@@ -36,6 +36,9 @@ export interface ToolStep {
 export interface NeemuSays {
   ask: "water" | "skip" | "none";
   heatwave: { active: boolean; tMaxC: number; date: string } | null;
+  spokenBy: "agent" | "template";
+  asOf: string;
+  replay: boolean;
   litres: number;
   textHi: string;
   textEn: string;
@@ -50,6 +53,8 @@ export interface ProofResult {
   basinWet: boolean | null;
   leaves: "healthy" | "dry" | "wilting" | "unclear";
   reasons: string[];
+  distanceM: number | null;
+  receivedAt: string;
   tree: Tree;
 }
 

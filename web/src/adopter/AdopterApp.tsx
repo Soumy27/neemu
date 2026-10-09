@@ -113,7 +113,7 @@ export function AdopterApp({ treeId }: { treeId: string }) {
       {usingMock && <div className="banner">{scenarioLabel[scenario]}</div>}
       {says?.heatwave?.active && (
         <div className="boss" role="status">
-          <strong>🔥 Heatwave boss day · {says.heatwave.tMaxC} °C</strong>
+          <strong>🔥 Heat day boss · {says.heatwave.tMaxC} °C</strong>
           <span>Every tree in the drive needs water before 6 PM. Beat the heat, keep your streak.</span>
         </div>
       )}
@@ -165,12 +165,14 @@ export function AdopterApp({ treeId }: { treeId: string }) {
 
             {says && shownSteps >= says.steps.length && (
               <>
+                {says.replay && <p className="muted small">Replay of {says.asOf}, real weather for that day.</p>}
                 <blockquote lang="hi">{says.textHi}</blockquote>
                 <p className="muted">{says.textEn}</p>
                 <div className="row wrap">
                   <button onClick={() => setVoiceVia(speak(says.textHi, says.audioUrl).via)}>▶ Hear {tree.name}</button>
                   <button onClick={() => setShowWhy((v) => !v)}>{showWhy ? "Hide" : "Why?"}</button>
                   <button onClick={() => shareCard(tree, says)}>Share</button>
+                  {says.spokenBy === "template" && <span className="muted small">The AI is offline, so {tree.name} is using a fixed sentence. The numbers are still computed.</span>}
                   {voiceVia === "browser" && <span className="muted small">Browser voice stands in for Amazon Polly in demo mode.</span>}
                 </div>
                 {showWhy && (
@@ -189,7 +191,7 @@ export function AdopterApp({ treeId }: { treeId: string }) {
           {says?.ask === "water" && (
             <section className="card">
               <h2>Watered it? Show {tree.name}.</h2>
-              <p>Take a photo with the <strong>QR tag on the tree guard</strong> in the frame. No tag, no credit.</p>
+              <p>Take a photo with the <strong>tag on the tree guard</strong> (QR code and tree number) in the frame. No tag, no credit.</p>
               <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => onPhoto(e.target.files?.[0])} />
               <button className="primary" disabled={checking} onClick={() => fileRef.current?.click()}>
                 {checking ? "Checking the photo…" : `📷 I gave ${says.litres} L, send proof`}
@@ -197,7 +199,7 @@ export function AdopterApp({ treeId }: { treeId: string }) {
               {result && (
                 <div className={`result ${result.verdict}`}>
                   {result.verdict === "accepted" ? (
-                    <p>Accepted. Tag matched, basin wet, leaves {result.leaves}. Streak now {tree.streakDays}.</p>
+                    <p>Accepted. Tag matched, basin wet, leaves {result.leaves}{result.distanceM != null && `, ${result.distanceM} m from the tree`}. Streak now {tree.streakDays}.</p>
                   ) : (
                     <ul>{result.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
                   )}

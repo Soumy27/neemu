@@ -22,7 +22,7 @@ interface Tree {
   health: number;             // 0 to 100
   growthStage: 1 | 2 | 3 | 4 | 5;
   streakDays: number;         // consecutive days with an accepted proof or a justified skip
-  litresSaved: number;        // total litres Neemu told the adopter NOT to give because rain or soil covered it
+  litresSaved: number;        // sum over skip days of min(effective rain, ET0 x crop factor) x basinM2
   water: {
     soilWaterMm: number;      // modelled water left in the root zone
     deficitMm: number;        // how far below comfortable
@@ -45,7 +45,10 @@ interface ToolStep { tool: string; summary: string; ok: boolean } // shown live 
 
 interface NeemuSays {
   ask: "water" | "skip" | "none";
-  heatwave: { active: boolean; tMaxC: number; date: string } | null; // "boss day": forecast max at or above the heat threshold (proposal: 40 °C)
+  heatwave: { active: boolean; tMaxC: number; date: string } | null; // "heat day": forecast max >= 40 °C. Not an official IMD heatwave; label it "heat day"
+  spokenBy: "agent" | "template"; // template when Bedrock cannot run; ask, litres, facts, heatwave come from code either way
+  asOf: string;               // the date the numbers are for
+  replay: boolean;            // true when ?date= asked for a past day; the UI must say so
   litres: number;             // 0 when ask is not "water"
   textHi: string;             // Hindi, what Neemu says
   textEn: string;             // English subtitle
@@ -56,6 +59,7 @@ interface NeemuSays {
 ```
 
 - `GET /trees/{id}/today` → `NeemuSays` (the morning check)
+- `GET /trees/{id}/today?date=YYYY-MM-DD` → `NeemuSays` with `replay: true` (real past weather)
 - `POST /trees/{id}/talk` body `{ text, lang: "hi" | "en" }` → `NeemuSays`
 
 ## Proof photo
@@ -70,9 +74,17 @@ interface ProofResult {
   basinWet: boolean | null;
   leaves: "healthy" | "dry" | "wilting" | "unclear";
   reasons: string[];          // shown to the user when rejected
+  distanceM: number | null;   // phone position to tree; far away is rejected
+  receivedAt: string;         // server time; takenAt from the phone can be faked
   tree: Tree;                 // updated health, streak, water
 }
 ```
+
+## Rules held in code (backend)
+
+- The tag: QR code **plus the tree id printed large under it**. The backend decodes the QR first, then reads the printed id; with neither, the photo is rejected.
+- `lastWateredAt` and `streakDays` move only on an accepted proof or a code-justified skip.
+- Status thresholds (`thirsty`, `no_proof`, `likely_dead`) are fixed in code; Aditya lists them here when the backend starts.
 
 ## Organiser register (Pratham's screen)
 

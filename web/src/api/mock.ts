@@ -65,6 +65,7 @@ export async function adopt(id: string, handle: string): Promise<Tree> {
 }
 
 function says(): NeemuSays {
+  const meta = { spokenBy: "agent" as const, asOf: scenario === "heatwave" ? "2026-05-19" : scenario === "rain" ? "2026-08-03" : "2026-10-09", replay: scenario !== "today" };
   const w = tree.water;
   const facts = [
     { label: "Max temperature today", value: `${w.tMaxTodayC} °C` },
@@ -80,6 +81,7 @@ function says(): NeemuSays {
   ];
   if (scenario === "heatwave") {
     return {
+      ...meta,
       ask: "water",
       heatwave: { active: true, tMaxC: 44.0, date: "2026-05-19" },
       litres: w.litresNeeded,
@@ -92,6 +94,7 @@ function says(): NeemuSays {
   }
   if (w.litresNeeded > 0) {
     return {
+      ...meta,
       ask: "water",
       heatwave: null,
       litres: w.litresNeeded,
@@ -103,6 +106,7 @@ function says(): NeemuSays {
     };
   }
   return {
+    ...meta,
     ask: "skip",
     heatwave: null,
     litres: 0,
@@ -142,14 +146,14 @@ export async function talk(_id: string, text: string): Promise<NeemuSays> {
 export async function proof(_id: string, file: File): Promise<ProofResult> {
   await wait(1500);
   if (!file.type.startsWith("image/")) {
-    return { verdict: "rejected", qrMatched: false, basinWet: null, leaves: "unclear", reasons: ["That isn't a photo."], tree: clone(tree) };
+    return { verdict: "rejected", qrMatched: false, basinWet: null, leaves: "unclear", reasons: ["That isn't a photo."], distanceM: null, receivedAt: new Date().toISOString(), tree: clone(tree) };
   }
   tree.streakDays += 1;
   tree.health = Math.min(100, tree.health + 14);
   tree.status = "fine";
   tree.water = { ...tree.water, soilWaterMm: tree.water.soilWaterMm + tree.water.deficitMm, deficitMm: 0, litresNeeded: 0, lastWateredAt: new Date().toISOString() };
   if (tree.health > 75 && tree.growthStage < 5) tree.growthStage = (tree.growthStage + 1) as Tree["growthStage"];
-  return { verdict: "accepted", qrMatched: true, basinWet: true, leaves: "healthy", reasons: [], tree: clone(tree) };
+  return { verdict: "accepted", qrMatched: true, basinWet: true, leaves: "healthy", reasons: [], distanceM: 4, receivedAt: new Date().toISOString(), tree: clone(tree) };
 }
 
 export async function getDrive(id: string): Promise<Drive> {
