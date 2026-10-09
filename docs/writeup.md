@@ -1,73 +1,65 @@
-# Neemu: submission write-up (draft)
+# Neemu: write-up (draft 1)
 
-Draft by aditya-claude, 9 Oct 2026. For the team to edit. The submission form's fields are not visible yet, so this follows what the rules ask for: the problem, the build, where AWS fits, and the AI coding tools used. Anything in [square brackets] still has to be filled in or checked.
-
-**Track:** Heat and Water.
+Draft by soumy-claude for the submission form. Everyone edit freely. Facts come from `docs/architecture.md` and `backend/README.md`; if one of those changes, change it here too.
 
 ## The problem
 
-Every monsoon, colleges, housing societies and city drives plant saplings. Then the rain stops, nobody is assigned to water them, and many die in their first dry months. The person who ran the drive cannot tell which saplings are in trouble today or whether anyone watered them.
+Every monsoon, colleges, resident welfare associations and city campaigns plant saplings by the thousand. Then the rains stop. A sapling in its first dry months needs a few litres every few days, nobody is sure whose job that is, and many die. The organiser of a drive has no way to see which saplings are at risk today, or whether anyone watered them.
 
-## What Neemu does
+This is small and specific on purpose: one drive, one organiser, one adopter per sapling, the first dry season.
 
-**The tree that calls you when it's thirsty.**
+## What we built
 
-- Each sapling in a drive gets one adopter.
-- Every morning the sapling works out from real weather whether it needs water today, and how many litres. If it does, the adopter's phone shows a notification and the sapling asks in Hindi, in its own voice.
-- If rain has covered it, the sapling says "don't come today" and counts the litres saved.
-- The adopter waters it and sends a photo. Code checks the phone was at the sapling and that the photo is new. People check it is the same tree: the organiser, or a neighbouring adopter, compares it with the reference photo.
-- The organiser sees every sapling in the drive: fine, thirsty today, asked and unanswered, or likely dead, and can remind the adopters who have not come.
+**Neemu** turns every sapling in a drive into a character with a voice.
 
-Nothing is attached to any tree. A volunteer walks the row once with a phone to register the saplings.
+1. **The organiser registers saplings once.** Walk the row with a phone: each sapling gets a pin (averaged GPS, draggable) and one reference photo. Nothing is attached to the tree.
+2. **Adopters find theirs.** One link per drive, shared in the WhatsApp group or on a single poster, opens "Saplings near you". Tap one, adopt it.
+3. **The sapling decides when it needs water,** from a daily soil water balance (FAO-56) on real Open-Meteo weather for its location and species. It asks in Hindi with Amazon Polly ("आज शाम 7 लीटर पानी दोगे?", "will you give me 7 litres this evening?"), and only on days it needs to. After rain it says "don't come today", and the app counts litres saved. Every number has a "Why?".
+4. **The adopter proves it.** A photo from the in-app camera, with the first photo as a faint guide. Code checks that the phone was at the sapling and that the image is new. Some proofs go to a person (the organiser, or a "water buddy" with a nearby sapling), who compares it with the reference photo: same tree, not sure, or different.
+5. **The organiser sees the drive at a glance:** fine, thirsty, unanswered, likely dead, on a map, with one button to remind everyone who needs to act. At 06:00 a morning check runs for every sapling and notifies the adopters whose sapling is thirsty.
+6. **A small game keeps it going:** a 3D tree that grows with care and wilts without it, streaks, litres saved, and heat days at 40 °C or more.
 
-## Who it is for
-
-- **The adopter:** a student or resident with a phone and one sapling near them.
-- **The organiser:** an eco-club, a residents' association or a municipal drive with hundreds of saplings and no way to follow them.
-
-## How it works
-
-The number that matters is how dry the soil around the roots is. Neemu computes it with the FAO-56 daily soil water balance, the standard method irrigation engineers use, from daily evapotranspiration and rainfall at the sapling's location. Each species has its own thirst. When the root zone is due to be 9.8 mm short of full by evening, the sapling asks for that depth times its basin area.
-
-On this week's Delhi weather a sapling asks for 5 to 9 litres about every four days. On 19 May 2026, a real 44 °C day, it asks for 10 to 14 litres daily. The app can replay that day.
-
-**Code decides every number.** The AI gives the sapling its voice and answers questions, using tools that return the engine's numbers. Before its reply is used, every number in it is checked against what the tools returned.
+**What decides what.** Code decides every number and verdict. The agent (when Bedrock is enabled) only chooses tools and words, and any number in its reply that did not come from a tool is rejected. People decide "is this the same tree".
 
 ## Where AWS fits
 
-| Service | Job |
+| Service | Its job in Neemu |
 |---|---|
-| AWS Lambda, Amazon API Gateway | The API and the water balance |
-| AWS Step Functions, Amazon EventBridge Scheduler | The 06:00 morning check: one Lambda run per sapling, in parallel |
-| Strands Agents SDK on Amazon Bedrock (Nova 2 Lite) | The sapling as an agent with tools |
-| Amazon Polly | The sapling's Hindi voice |
-| Amazon DynamoDB | Saplings, proofs, review votes |
-| Amazon S3 | Photos, uploaded straight from the phone; audio |
-| Amazon Cognito | Sign-in |
-| AWS Systems Manager Parameter Store | The notification signing key |
-| AWS Amplify Hosting | The web app |
+| AWS Lambda | The API, and one morning check per sapling |
+| Amazon API Gateway | 18 HTTP routes |
+| Amazon DynamoDB | Saplings, adopters, proofs, review votes, cover requests |
+| Amazon S3 | Proof and reference photos (signed upload from the phone), Neemu's audio |
+| Amazon Polly | Neemu's Hindi voice (Kajal, neural) |
+| Strands Agents SDK on Amazon Bedrock | Neemu as an agent with four tools over the water balance |
+| AWS Step Functions | The morning check, fanned out over every sapling |
+| Amazon EventBridge Scheduler | Starts the morning check at 06:00 IST |
+| AWS Systems Manager Parameter Store | The Web Push signing key, encrypted |
+| Amazon Cognito | Sign-in, and an organisers group |
+| AWS Amplify Hosting | The web app over HTTPS (camera and location need it) |
 | AWS SAM | The whole backend as one template |
 
-Diagram and detail: [`docs/architecture.md`](architecture.md).
+## Honest limits
 
-## What is real and what is not
+- The Bedrock agent has not run in production: model access is not enabled on our new account yet. Until then every sentence is a fixed template and the app says so.
+- The water balance uses textbook soil and crop figures; it is not calibrated on real trees.
+- Survival through a summer cannot be shown in a weekend. The replays of real past days (19 May 2026, 44 °C; 3 Aug 2026, heavy rain) show the same loop in other weather.
+- The 40 saplings of the example drive and their adopters are illustrative; weather and statuses are real.
 
-- Weather is always real (Open-Meteo).
-- The 40 saplings of the example drive, their adopters and their past care are illustrative. Their statuses are computed by running each one's care pattern against real weather.
-- [The sapling in the video is a real one, registered and watered by a team member at ___.]
-- A sapling surviving its first summer cannot be shown in a weekend. What we show is the daily loop working.
-- [If still true at submission: the Bedrock agent is deployed but our new AWS account's model quota was not enabled in time, so the sapling's sentences come from fixed templates. The app says which is which.]
+## AI tools used
 
-## Links
+Claude Code, by all three team members.
 
-- Live: https://main.d1wy94gbpeilv8.amplifyapp.com
-- Repository: https://github.com/Soumy27/neemu [must be public before submitting]
-- Demo video: [YouTube link]
+---
 
-## AI coding tools used
+## Suggested shot list for the 3-minute video (pratham-claude's to change)
 
-Claude Code (Anthropic), by all three team members, for planning, code, tests and review. [Add any others.]
-
-## Credits
-
-Open-Meteo (weather, CC BY 4.0). FAO Irrigation and Drainage Paper 56 (the water balance method). OpenStreetMap contributors and MapLibre GL (map). three.js and React Three Fiber (3D tree). Strands Agents SDK, pywebpush. [Check the web app's package list for anything missing.]
+| Time | Shot | Point it makes |
+|---|---|---|
+| 0:00 to 0:12 | A real sapling, dry soil. Phone buzzes: "Neemu is thirsty". | The hook: the tree calls you. |
+| 0:12 to 0:30 | Open it. The tool steps tick, Neemu speaks Hindi, subtitle, "Why?" shows the real weather. | It reasons from real data, in the user's language. |
+| 0:30 to 0:50 | The problem in two lines: drives plant thousands, many die in the first dry months, nobody knows which. | Idea and impact. |
+| 0:50 to 1:20 | Organiser walks the row: pin, reference photo. Drive poster, WhatsApp link, "Saplings near you", adopt. | Nothing to attach to a tree; usable on the ground. |
+| 1:20 to 1:50 | Water it, take the proof photo with the ghost guide, "Accepted, 4 m from the tree". A buddy confirms "same tree". | Proof without tags; people check people. |
+| 1:50 to 2:10 | Heat-day replay (44 °C): the tree wilts, boss-day banner. Rain replay: "don't come today", litres saved. | It saves water too. |
+| 2:10 to 2:40 | Architecture diagram, then quick cuts: Step Functions run of the morning check, DynamoDB, Polly, the API. | Built on AWS, visibly. |
+| 2:40 to 3:00 | The register: "40 of 40 saplings alive". One line: who it is for, and the live link. | Close. |
