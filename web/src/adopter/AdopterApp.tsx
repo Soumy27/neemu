@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { api, SourceError, usingMock } from "../api/client";
 import { scenarioLabel, scenario } from "../api/mock";
 import { shareCard } from "./shareCard";
 import type { NeemuSays, ProofResult, Tree } from "../api/types";
+import { Buddies } from "./Buddies";
+import { Camera } from "./Camera";
 import { Tree3D } from "./Tree3D";
 import { listen, speak } from "./voice";
 
@@ -32,7 +34,7 @@ export function AdopterApp({ treeId }: { treeId: string }) {
   const [question, setQuestion] = useState("");
   const [lang, setLang] = useState<"hi" | "en">("hi");
   const [listening, setListening] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [camera, setCamera] = useState(false);
 
   useEffect(() => {
     api.getTree(treeId).then(setTree).catch((e) => setError(errorText(e)));
@@ -71,8 +73,8 @@ export function AdopterApp({ treeId }: { treeId: string }) {
     }
   }
 
-  async function onPhoto(file: File | undefined) {
-    if (!file) return;
+  async function onPhoto(file: File) {
+    setCamera(false);
     setChecking(true);
     setResult(null);
     setError(null);
@@ -88,7 +90,6 @@ export function AdopterApp({ treeId }: { treeId: string }) {
       setError(errorText(e));
     } finally {
       setChecking(false);
-      if (fileRef.current) fileRef.current.value = "";
     }
   }
 
@@ -191,15 +192,21 @@ export function AdopterApp({ treeId }: { treeId: string }) {
           {says?.ask === "water" && (
             <section className="card">
               <h2>Watered it? Show {tree.name}.</h2>
-              <p>Take a photo with the <strong>tag on the tree guard</strong> (QR code and tree number) in the frame. No tag, no credit.</p>
-              <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => onPhoto(e.target.files?.[0])} />
-              <button className="primary" disabled={checking} onClick={() => fileRef.current?.click()}>
-                {checking ? "Checking the photo…" : `📷 I gave ${says.litres} L, send proof`}
-              </button>
+              <p>Stand next to {tree.name} and take the photo from the same spot as its first photo. Your location is checked, and sometimes a buddy confirms it's the same tree.</p>
+              {camera ? (
+                <Camera referenceUrl={tree.referencePhotoUrl} onShot={onPhoto} onCancel={() => setCamera(false)} />
+              ) : (
+                <button className="primary" disabled={checking} onClick={() => setCamera(true)}>
+                  {checking ? "Checking the photo…" : `📷 I gave ${says.litres} L, send proof`}
+                </button>
+              )}
               {result && (
                 <div className={`result ${result.verdict}`}>
                   {result.verdict === "accepted" ? (
-                    <p>Accepted. Tag matched, basin wet, leaves {result.leaves}{result.distanceM != null && `, ${result.distanceM} m from the tree`}. Streak now {tree.streakDays}.</p>
+                    <p>
+                      Accepted. Location checked{result.distanceM != null && `: ${result.distanceM} m from the tree`}{result.accuracyM != null && ` (±${Math.round(result.accuracyM)} m)`}. Streak now {tree.streakDays}.
+                      {result.review === "pending" && <><br />A water buddy will confirm it's the same tree.</>}
+                    </p>
                   ) : (
                     <ul>{result.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
                   )}
@@ -207,6 +214,8 @@ export function AdopterApp({ treeId }: { treeId: string }) {
               )}
             </section>
           )}
+
+          <Buddies treeId={tree.id} treeName={tree.name} me={tree.adopter.handle} />
 
           <section className="card">
             <h2>Talk to {tree.name}</h2>

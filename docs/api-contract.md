@@ -10,7 +10,7 @@ All responses are JSON. Times are ISO 8601 UTC. Numbers are computed by code, ne
 type TreeStatus = "fine" | "thirsty" | "no_proof" | "likely_dead";
 
 interface Tree {
-  id: string;                 // printed on the QR tag, e.g. "dtu-gate3-017"
+  id: string;                 // e.g. "dtu-gate3-017"; share link is ?tree=<id>
   name: string;               // "Neemu"
   species: string;            // "Neem (Azadirachta indica)"
   plantedOn: string;          // date
@@ -18,6 +18,7 @@ interface Tree {
   location: { lat: number; lng: number; label: string };
   basinM2: number;            // watering basin area, for litres
   adopter: { handle: string } | null;
+  referencePhotoUrl: string | null; // taken when the tree is registered; drive endpoint and the tree's own adopter only
   status: TreeStatus;
   health: number;             // 0 to 100
   growthStage: 1 | 2 | 3 | 4 | 5;
@@ -70,7 +71,12 @@ interface NeemuSays {
 ```ts
 interface ProofResult {
   verdict: "accepted" | "rejected";
-  qrMatched: boolean;         // tag in frame matches this tree
+  proofId: string;
+  review: "none" | "pending" | "confirmed" | "rejected"; // manual same-tree check by a person (see below)
+  sameTree: boolean | null;   // optional AI hint once Bedrock works; never decides alone. UI says "looks like the same tree"
+  reusedPhoto: boolean;       // same image as an earlier proof (hash check in code)
+  accuracyM: number | null;   // phone's own GPS accuracy, stored
+  coverFor: string | null;    // set when a water buddy's proof counts for this tree
   basinWet: boolean | null;
   leaves: "healthy" | "dry" | "wilting" | "unclear";
   reasons: string[];          // shown to the user when rejected
@@ -82,9 +88,37 @@ interface ProofResult {
 
 ## Rules held in code (backend)
 
-- The tag: QR code **plus the tree id printed large under it**. The backend decodes the QR first, then reads the printed id; with neither, the photo is rejected.
+- **Nothing on the trees** (Soumy's decision): no QR, no painted number. Identity comes from who sends the proof: a signed-in adopter (Cognito, proposed), for their own tree, or a buddy with an accepted cover for that tree, that day.
+- **Position gate, in code:** accept only if `distanceM <= max(15, accuracyM)` and `accuracyM <= 50`. Both are stored. GPS cannot tell neighbouring saplings 2 to 3 m apart; it only proves the person came.
+- **Reused photo:** a hash of the image; the same file twice is rejected.
+- **Same tree is checked by people.** A share of proofs (proposal: 1 in 5 at random, every first proof, and soft fails such as accuracy 30 to 50 m) get `review: "pending"` and go to a review queue. A reviewer sees the proof beside the reference photo and votes same / unsure / different. Reviewers: the organiser, or a water buddy (adopter of a nearby tree, never the proof's own adopter). Two "different" votes, or one from the organiser, undo the credit.
+- Photos come from the in-app camera only, not the gallery.
 - `lastWateredAt` and `streakDays` move only on an accepted proof or a code-justified skip.
 - Status thresholds (`thirsty`, `no_proof`, `likely_dead`) are fixed in code; Aditya lists them here when the backend starts.
+
+## Finding and registering trees
+
+- `GET /drives/{driveId}/nearby?lat=&lng=` → `(Tree & { distanceM: number })[]`, unadopted first, nearest first.
+- `POST /drives/{driveId}/trees` body `{ name, species, lat, lng, accuracyM, referencePhotoKey }` → `Tree`. Used by the organiser's "register saplings" screen (walk the row once with a phone).
+
+## Manual review
+
+```ts
+interface Review { proofId: string; treeId: string; treeName: string; proofPhotoUrl: string; referencePhotoUrl: string | null; takenAt: string; distanceM: number | null; accuracyM: number | null }
+```
+
+- `GET /reviews?for=<handle>` → `Review[]` waiting for this person (organiser or buddy).
+- `POST /proofs/{proofId}/review` body `{ verdict: "same" | "unsure" | "different" }` → `{ review: ProofResult["review"] }`.
+
+## Water buddies (adopters cover for each other)
+
+```ts
+interface Cover { id: string; treeId: string; from: string; to: string; date: string; distanceM: number; status: "asked" | "accepted" | "declined" | "done" }
+```
+
+- `GET /trees/{id}/buddies` → `{ handle: string; treeId: string; treeName: string; distanceM: number }[]`, adopters of nearby trees, nearest first.
+- `POST /trees/{id}/cover` body `{ toHandle }` → `Cover` (status `asked`).
+- `POST /covers/{coverId}/accept` | `/decline` → `Cover`. An accepted cover lets that buddy send today's proof for this tree; the streak counts.
 
 ## Organiser register (Pratham's screen)
 

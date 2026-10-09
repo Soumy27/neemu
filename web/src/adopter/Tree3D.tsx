@@ -145,7 +145,7 @@ function Ground({ wetness }: { wetness: number }) {
         <circleGeometry args={[0.55, 32]} />
         <meshStandardMaterial color={soil} roughness={1} />
       </mesh>
-      {/* tree guard, where the QR tag hangs */}
+      {/* tree guard */}
       {Array.from({ length: 8 }, (_, i) => {
         const a = (i / 8) * Math.PI * 2;
         return (
@@ -155,10 +155,6 @@ function Ground({ wetness }: { wetness: number }) {
           </mesh>
         );
       })}
-      <mesh position={[0, 0.55, 0.61]}>
-        <boxGeometry args={[0.16, 0.16, 0.01]} />
-        <meshStandardMaterial color="#ffffff" />
-      </mesh>
     </group>
   );
 }

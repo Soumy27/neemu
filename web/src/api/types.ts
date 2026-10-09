@@ -11,6 +11,7 @@ export interface Tree {
   location: { lat: number; lng: number; label: string };
   basinM2: number;
   adopter: { handle: string } | null;
+  referencePhotoUrl: string | null;
   status: TreeStatus;
   health: number;
   growthStage: 1 | 2 | 3 | 4 | 5;
@@ -49,7 +50,12 @@ export interface NeemuSays {
 
 export interface ProofResult {
   verdict: "accepted" | "rejected";
-  qrMatched: boolean;
+  proofId: string;
+  review: "none" | "pending" | "confirmed" | "rejected";
+  sameTree: boolean | null;
+  reusedPhoto: boolean;
+  accuracyM: number | null;
+  coverFor: string | null;
   basinWet: boolean | null;
   leaves: "healthy" | "dry" | "wilting" | "unclear";
   reasons: string[];
@@ -68,4 +74,32 @@ export interface Drive {
 
 export interface ApiError {
   error: { code: string; message: string; source: string };
+}
+
+export interface Buddy {
+  handle: string;
+  treeId: string;
+  treeName: string;
+  distanceM: number;
+}
+
+export interface Cover {
+  id: string;
+  treeId: string;
+  from: string;
+  to: string;
+  date: string;
+  distanceM: number;
+  status: "asked" | "accepted" | "declined" | "done";
+}
+
+export interface Review {
+  proofId: string;
+  treeId: string;
+  treeName: string;
+  proofPhotoUrl: string;
+  referencePhotoUrl: string | null;
+  takenAt: string;
+  distanceM: number | null;
+  accuracyM: number | null;
 }

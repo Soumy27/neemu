@@ -2,7 +2,7 @@
 // Weather numbers are real: Open-Meteo, Rohini, Delhi, 9 Oct 2026.
 // The tree, adopter and drive are illustrative.
 
-import type { Drive, NeemuSays, ProofResult, Tree, TreeStatus } from "./types";
+import type { Buddy, Cover, Drive, NeemuSays, ProofResult, Review, Tree, TreeStatus } from "./types";
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -15,6 +15,7 @@ const tree: Tree = {
   location: { lat: 28.7501, lng: 77.1177, label: "DTU, Gate 3, Delhi" },
   basinM2: 0.5,
   adopter: null,
+  referencePhotoUrl: null,
   status: "thirsty",
   health: 58,
   growthStage: 2,
@@ -143,17 +144,27 @@ export async function talk(_id: string, text: string): Promise<NeemuSays> {
   return s;
 }
 
-export async function proof(_id: string, file: File): Promise<ProofResult> {
+// Same position gate the backend will hold: distance <= max(15, accuracy) and accuracy <= 50.
+export async function proof(_id: string, file: File, pos: { distanceM: number | null; accuracyM: number | null }): Promise<ProofResult> {
   await wait(1500);
+  const base = { proofId: `prf-${Date.now()}`, review: "none" as ProofResult["review"], basinWet: null, leaves: "unclear" as const, receivedAt: new Date().toISOString(), coverFor: null, reusedPhoto: false, sameTree: null, ...pos };
   if (!file.type.startsWith("image/")) {
-    return { verdict: "rejected", qrMatched: false, basinWet: null, leaves: "unclear", reasons: ["That isn't a photo."], distanceM: null, receivedAt: new Date().toISOString(), tree: clone(tree) };
+    return { ...base, verdict: "rejected", reasons: ["That isn't a photo."], tree: clone(tree) };
+  }
+  if (pos.accuracyM != null && pos.accuracyM > 50) {
+    return { ...base, verdict: "rejected", reasons: [`Your location is too rough (±${Math.round(pos.accuracyM)} m). Step out from under cover and try again.`], tree: clone(tree) };
+  }
+  if (pos.distanceM != null && pos.distanceM > Math.max(15, pos.accuracyM ?? 0)) {
+    return { ...base, verdict: "rejected", reasons: [`You seem to be ${Math.round(pos.distanceM)} m away from ${tree.name}. Take the photo next to the tree.`], tree: clone(tree) };
   }
   tree.streakDays += 1;
   tree.health = Math.min(100, tree.health + 14);
   tree.status = "fine";
   tree.water = { ...tree.water, soilWaterMm: tree.water.soilWaterMm + tree.water.deficitMm, deficitMm: 0, litresNeeded: 0, lastWateredAt: new Date().toISOString() };
   if (tree.health > 75 && tree.growthStage < 5) tree.growthStage = (tree.growthStage + 1) as Tree["growthStage"];
-  return { verdict: "accepted", qrMatched: true, basinWet: true, leaves: "healthy", reasons: [], distanceM: 4, receivedAt: new Date().toISOString(), tree: clone(tree) };
+  // Demo: no real GPS near DTU, so distance is shown as the backend would report it next to the tree.
+  const firstProof = tree.streakDays === 1;
+  return { ...base, review: firstProof ? "pending" : "none", verdict: "accepted", sameTree: null, basinWet: true, leaves: "healthy", reasons: [], distanceM: pos.distanceM ?? 4, accuracyM: pos.accuracyM ?? 8, tree: clone(tree) };
 }
 
 // Illustrative register: 40 saplings around DTU. The tree the adopter screen opens is the live one.
@@ -215,4 +226,64 @@ export async function getDrive(id: string): Promise<Drive> {
 export async function remind(id: string, status: TreeStatus): Promise<{ reminded: number }> {
   const drive = await getDrive(id);
   return { reminded: drive.trees.filter((t) => t.status === status && t.adopter).length };
+}
+
+// Water buddies: adopters of nearby trees in the same drive.
+export async function buddies(id: string): Promise<Buddy[]> {
+  await wait(300);
+  const drive = await getDrive(tree.driveId);
+  const here = drive.trees.find((t) => t.id === id) ?? tree;
+  const metres = (a: Tree, b: Tree) => {
+    const dy = (a.location.lat - b.location.lat) * 111_320;
+    const dx = (a.location.lng - b.location.lng) * 111_320 * Math.cos((a.location.lat * Math.PI) / 180);
+    return Math.round(Math.hypot(dx, dy));
+  };
+  return drive.trees
+    .filter((t) => t.id !== id && t.adopter && t.status === "fine")
+    .map((t) => ({ handle: t.adopter!.handle, treeId: t.id, treeName: t.name, distanceM: metres(here, t) }))
+    .sort((a, b) => a.distanceM - b.distanceM)
+    .slice(0, 3);
+}
+
+export async function cover(id: string, toHandle: string): Promise<Cover> {
+  await wait(500);
+  const b = (await buddies(id)).find((x) => x.handle === toHandle);
+  return { id: `cov-${Date.now()}`, treeId: id, from: tree.adopter?.handle ?? "you", to: toHandle, date: new Date().toISOString().slice(0, 10), distanceM: b?.distanceM ?? 0, status: "asked" };
+}
+
+export async function nearby(driveId: string, lat: number, lng: number): Promise<(Tree & { distanceM: number })[]> {
+  const drive = await getDrive(driveId);
+  return drive.trees
+    .map((t) => {
+      const dy = (t.location.lat - lat) * 111_320;
+      const dx = (t.location.lng - lng) * 111_320 * Math.cos((lat * Math.PI) / 180);
+      return { ...t, distanceM: Math.round(Math.hypot(dx, dy)) };
+    })
+    .sort((a, b) => Number(!!a.adopter) - Number(!!b.adopter) || a.distanceM - b.distanceM);
+}
+
+// A buddy's review queue: one proof from a nearby tree, with tiny inline sketches standing in for photos.
+const sketch = (fill: string) =>
+  `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90"><rect width="120" height="90" fill="#cfe3c0"/><rect y="62" width="120" height="28" fill="#a98b5c"/><rect x="0" y="20" width="120" height="14" fill="#d9c9a8"/><rect x="57" y="40" width="6" height="30" fill="#6b4a2b"/><circle cx="60" cy="38" r="16" fill="${fill}"/><g stroke="#333" stroke-width="2"><line x1="44" y1="45" x2="44" y2="72"/><line x1="76" y1="45" x2="76" y2="72"/><line x1="44" y1="50" x2="76" y2="50"/></g></svg>`)}`;
+
+let reviewDone = false;
+export async function reviews(_handle: string): Promise<Review[]> {
+  await wait(300);
+  if (reviewDone) return [];
+  return [{
+    proofId: "prf-demo-kabir",
+    treeId: "dtu-gate3-019",
+    treeName: "Jamun",
+    proofPhotoUrl: sketch("#4f9a52"),
+    referencePhotoUrl: sketch("#5aa35a"),
+    takenAt: new Date(Date.now() - 40 * 60_000).toISOString(),
+    distanceM: 6,
+    accuracyM: 9,
+  }];
+}
+
+export async function review(_proofId: string, verdict: "same" | "unsure" | "different"): Promise<{ review: ProofResult["review"] }> {
+  await wait(400);
+  reviewDone = true;
+  return { review: verdict === "same" ? "confirmed" : verdict === "different" ? "rejected" : "pending" };
 }
