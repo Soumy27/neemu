@@ -41,6 +41,7 @@ export default function AddSaplings({ driveId }: { driveId: string }) {
   const [geoNote, setGeoNote] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [species, setSpecies] = useState(SPECIES[0]);
+  const [soilDry, setSoilDry] = useState(false);
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -133,11 +134,13 @@ export default function AddSaplings({ driveId }: { driveId: string }) {
         lng: pin.lng,
         accuracyM: pin.accuracyM,
         photo,
+        soilDry,
       });
       setAdded((a) => [tree, ...a]);
       setTrees((t) => [...t, tree]);
       setPin(null);
       setName("");
+      setSoilDry(false);
       setPhoto(null);
       if (preview) URL.revokeObjectURL(preview);
       setPreview(null);
@@ -201,6 +204,10 @@ export default function AddSaplings({ driveId }: { driveId: string }) {
               </select>
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder={`Name (${species.split(" (")[0]})`} aria-label="Name" />
             </div>
+            <label className="check">
+              <input type="checkbox" checked={soilDry} onChange={(e) => setSoilDry(e.target.checked)} />
+              <span>The soil looks dry <span className="muted small">(it will ask for water today, not tomorrow)</span></span>
+            </label>
             <button className="primary save" disabled={!pin || !photo || saving} onClick={save}>
               {saving ? "Saving…" : "Add to the register"}
             </button>

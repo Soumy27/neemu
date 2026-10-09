@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, usingMock } from "../api/client";
-import type { Drive, Tree, TreeStatus } from "../api/types";
-import { errorText, organiserApi } from "./organiserApi";
+import { usingMock } from "../api/client";
+import type { Drive, TreeStatus } from "../api/types";
+import { errorText, needsWater, organiserApi } from "./organiserApi";
+import type { RegisterTree, Reminded } from "./organiserApi";
 import { RegisterMap } from "./RegisterMap";
 import { ReviewQueue } from "./ReviewQueue";
 import { daysSince, statusHint, statusLabel, statusOrder } from "./status";
@@ -13,7 +14,7 @@ export default function OrganiserApp({ driveId }: { driveId: string }) {
   const [filter, setFilter] = useState<TreeStatus | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reminding, setReminding] = useState(false);
-  const [reminded, setReminded] = useState<number | null>(null);
+  const [reminded, setReminded] = useState<Reminded | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,7 +36,7 @@ export default function OrganiserApp({ driveId }: { driveId: string }) {
     setReminding(true);
     setError(null);
     try {
-      setReminded((await api.remind(driveId, "thirsty")).reminded);
+      if (drive) setReminded(await organiserApi.remindNeedsWater(drive));
     } catch (e) {
       setError(errorText(e));
     } finally {
@@ -52,7 +53,8 @@ export default function OrganiserApp({ driveId }: { driveId: string }) {
 
   const total = drive.trees.length;
   const alive = total - drive.counts.likely_dead;
-  const selected: Tree | undefined = drive.trees.find((t) => t.id === selectedId);
+  const selected: RegisterTree | undefined = drive.trees.find((t) => t.id === selectedId);
+  const asking = drive.trees.filter(needsWater).length;
 
   return (
     <div className="organiser">
@@ -81,13 +83,20 @@ export default function OrganiserApp({ driveId }: { driveId: string }) {
 
       <section className="card remind">
         <div>
-          <h2>{drive.counts.thirsty} saplings need water today</h2>
-          <p className="muted">Each one works this out from today's weather and its last confirmed watering.</p>
+          <h2>{asking} {asking === 1 ? "sapling has" : "saplings have"} asked for water and not been watered</h2>
+          <p className="muted">
+            {drive.counts.thirsty} asked today, {drive.counts.no_proof} have asked several times. Each one works this out from the weather and its last confirmed watering.
+          </p>
         </div>
-        <button className="primary" disabled={reminding || drive.counts.thirsty === 0} onClick={onRemind}>
+        <button className="primary" disabled={reminding || asking === 0} onClick={onRemind}>
           {reminding ? "Sending…" : "Remind their adopters"}
         </button>
-        {reminded !== null && <p className="result accepted" role="status">Reminder sent to {reminded} adopters.</p>}
+        {reminded && (
+          <p className="result accepted" role="status">
+            {reminded.reminded} {reminded.reminded === 1 ? "adopter" : "adopters"} reminded, {reminded.notified} {reminded.notified === 1 ? "phone" : "phones"} reached.
+            {reminded.notified < reminded.reminded && " The rest have not turned notifications on; they see it when they open their tree."}
+          </p>
+        )}
       </section>
 
       <ReviewQueue drive={drive} />
@@ -104,11 +113,21 @@ export default function OrganiserApp({ driveId }: { driveId: string }) {
                 </div>
                 <span className={`pill pill-${selected.status}`}>{statusLabel[selected.status]}</span>
               </div>
-              {referencePhotos[selected.id] && <img className="ref-preview" src={referencePhotos[selected.id]} alt={`Reference photo of ${selected.name}`} />}
+              {(referencePhotos[selected.id] || selected.lastProof) && (
+                <div className="pair picked-photos">
+                  {referencePhotos[selected.id] && (
+                    <figure><img src={referencePhotos[selected.id]} alt={`Reference photo of ${selected.name}`} /><figcaption>Reference</figcaption></figure>
+                  )}
+                  {selected.lastProof && (
+                    <figure><img src={selected.lastProof.photoUrl} alt={`Last watering photo of ${selected.name}`} /><figcaption>Last proof, {daysSince(selected.lastProof.at)}</figcaption></figure>
+                  )}
+                </div>
+              )}
               <table className="facts">
                 <tbody>
                   <tr><td>Adopter</td><td>{selected.adopter?.handle ?? "nobody yet"}</td></tr>
                   <tr><td>Last confirmed watering</td><td>{daysSince(selected.water.lastWateredAt)}</td></tr>
+                  <tr><td>Last reminded</td><td>{daysSince(selected.lastRemindedAt ?? null)}</td></tr>
                   <tr><td>Water needed now</td><td>{selected.water.litresNeeded} L</td></tr>
                   <tr><td>Health</td><td>{selected.health}/100</td></tr>
                 </tbody>

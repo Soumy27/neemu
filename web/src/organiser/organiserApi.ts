@@ -6,6 +6,9 @@ import { api, SourceError, usingMock } from "../api/client";
 import type { ApiError, Drive, Tree, TreeStatus } from "../api/types";
 
 const BASE = import.meta.env.VITE_API_URL as string | undefined;
+// Same rule as api/client.ts: with VITE_API_LIVE set, only the calls it names go to the API.
+const LIVE = (import.meta.env.VITE_API_LIVE as string | undefined)?.split(",").map((x) => x.trim());
+const live = (name: string) => !!BASE && (!LIVE || LIVE.includes(name));
 
 export interface NewSapling {
   name: string;
@@ -14,7 +17,16 @@ export interface NewSapling {
   lng: number;
   accuracyM: number | null; // null when the pin was placed or corrected by hand
   photo: Blob;
+  soilDry: boolean; // the soil looks dry now, so Neemu asks today rather than tomorrow
 }
+
+// GET /drives/{id} adds these to each tree, for the organiser only.
+export type RegisterTree = Tree & {
+  lastRemindedAt?: string | null;
+  lastProof?: { at: string; photoUrl: string } | null;
+};
+
+export interface Reminded { reminded: number; notified: number }
 
 export interface Review {
   proofId: string;
@@ -70,21 +82,29 @@ export const organiserApi = {
   },
 
   async addSapling(driveId: string, s: NewSapling): Promise<Tree> {
-    if (usingMock) return mockAddSapling(driveId, s);
+    if (!live("addTree")) return mockAddSapling(driveId, s);
     const { uploadUrl, key } = await call<{ uploadUrl: string; key: string }>(`/drives/${driveId}/photo-url`, post({}));
     const put = await fetch(uploadUrl, { method: "PUT", body: s.photo, headers: { "content-type": s.photo.type } });
     if (!put.ok) throw new SourceError("s3", `Photo upload failed (HTTP ${put.status})`);
     return call(`/drives/${driveId}/trees`, post({
-      name: s.name, species: s.species, lat: s.lat, lng: s.lng, accuracyM: s.accuracyM, referencePhotoKey: key,
+      name: s.name, species: s.species, lat: s.lat, lng: s.lng, accuracyM: s.accuracyM, referencePhotoKey: key, soilDry: s.soilDry,
     }));
   },
 
   getReviews: (drive: Drive): Promise<Review[]> =>
-    usingMock ? mockReviews(drive.id) : call(`/drives/${drive.id}/reviews`),
+    live("driveReviews") ? call(`/drives/${drive.id}/reviews`) : mockReviews(drive.id),
 
   review: (proofId: string, verdict: ReviewVerdict): Promise<{ review: ReviewState }> =>
-    usingMock ? mockReview(proofId, verdict) : call(`/proofs/${proofId}/review`, post({ verdict, by: "organiser" })),
+    live("reviewVote") ? call(`/proofs/${proofId}/review`, post({ verdict, by: "organiser" })) : mockReview(proofId, verdict),
+
+  // Everyone whose sapling has asked and not been watered: thirsty today, or no proof after several asks.
+  remindNeedsWater: (drive: Drive): Promise<Reminded> =>
+    live("remind")
+      ? call(`/drives/${drive.id}/remind`, post({ status: "needs_water" }))
+      : wait(400).then(() => ({ reminded: drive.trees.filter((t) => needsWater(t) && t.adopter).length, notified: 0 })),
 };
+
+export const needsWater = (t: Tree) => t.status === "thirsty" || t.status === "no_proof";
 
 // ---- Mock, used until the API is live. Added saplings live in this browser tab only. ----
 
