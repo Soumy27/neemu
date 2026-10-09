@@ -9,6 +9,7 @@ const APP_URL = ((import.meta.env.VITE_APP_URL as string | undefined) ?? locatio
 
 const tagUrl = (treeId: string) => `${APP_URL}/?tree=${encodeURIComponent(treeId)}`;
 
+// The id is also printed large under the code: the photo check reads it when the QR will not decode.
 // High error correction: the tag sits outdoors and has to be read out of a watering photo.
 function Qr({ text }: { text: string }) {
   const { size, data } = QRCode.create(text, { errorCorrectionLevel: "H" }).modules;
@@ -54,9 +55,8 @@ export default function TagSheet({ driveId }: { driveId: string }) {
         {drive.trees.map((t) => (
           <div key={t.id} className="tag">
             <Qr text={tagUrl(t.id)} />
-            <div className="tag-name">{t.name}</div>
-            <div className="tag-hi" lang="hi">मुझे पानी दो, मुझे गोद लो</div>
-            <div className="tag-id">{t.id}</div>
+            <div className="tag-id">{t.id.toUpperCase()}</div>
+            <div className="tag-name">{t.name} · <span lang="hi">मुझे गोद लो</span></div>
           </div>
         ))}
       </div>

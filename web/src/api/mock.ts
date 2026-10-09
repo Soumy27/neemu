@@ -190,8 +190,8 @@ function driveTree(i: number): Tree {
     streakDays: by.streak,
     adopter: status === "likely_dead" && i % 16 === 7 ? null : { handle: adopters[i % adopters.length] },
     location: {
-      lat: 28.7495 + (i % 8) * 0.00015 + (((i * 37) % 11) - 5) * 0.00002,
-      lng: 77.1165 + Math.floor(i / 8) * 0.0002 + (((i * 53) % 13) - 6) * 0.00002,
+      lat: 28.7495 + (i % 8) * 0.00015 + (((i * 37) % 11) - 5) * 0.000008,
+      lng: 77.1165 + Math.floor(i / 8) * 0.0002 + (((i * 53) % 13) - 6) * 0.000008,
       label: "DTU, Gate 3, Delhi",
     },
     water: {
