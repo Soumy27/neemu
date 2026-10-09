@@ -87,6 +87,7 @@ def run() -> dict:
         "organiser": "DTU Eco Club",
         "treeIds": [t["id"] for t in ts],
     }, only_if_new=True)
+    store.put_item("DRIVES", DRIVE_ID, {})
     return {"drive": DRIVE_ID, "trees": len(ts), "added": added}
 
 

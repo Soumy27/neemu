@@ -89,6 +89,85 @@ Resources:
         MyReviews: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET, Path: "/reviews" } }
         Review: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/proofs/{id}/review" } }
 
+  # ---- the morning check: EventBridge -> Step Functions -> one Lambda run per sapling ----
+  ListTreesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: daily.list_trees
+      Policies:
+        - DynamoDBReadPolicy: { TableName: !Ref Table }
+
+  CheckTreeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: daily.check_tree
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref Table }
+        - S3CrudPolicy: { BucketName: !Ref MediaBucket }
+        - Statement:
+            - Effect: Allow
+              Action: polly:SynthesizeSpeech
+              Resource: "*"
+
+  SummariseFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: daily.summarise
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref Table }
+
+  MorningCheck:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Type: STANDARD
+      Definition:
+        Comment: Every morning, each sapling works out from real weather whether it needs water today.
+        StartAt: ListSaplings
+        States:
+          ListSaplings:
+            Type: Task
+            Resource: !GetAtt ListTreesFunction.Arn
+            Next: CheckEachSapling
+          CheckEachSapling:
+            Type: Map
+            ItemsPath: $.trees
+            MaxConcurrency: 5
+            ResultPath: $.results
+            ItemProcessor:
+              StartAt: MorningCheckForOne
+              States:
+                MorningCheckForOne:
+                  Type: Task
+                  Resource: !GetAtt CheckTreeFunction.Arn
+                  Retry:
+                    - ErrorEquals: [States.TaskFailed]
+                      IntervalSeconds: 5
+                      MaxAttempts: 2
+                      BackoffRate: 2
+                  Catch:
+                    - ErrorEquals: [States.ALL]
+                      ResultPath: $.error
+                      Next: SaplingFailed
+                  End: true
+                SaplingFailed:
+                  Type: Pass
+                  End: true
+            Next: Summarise
+          Summarise:
+            Type: Task
+            Resource: !GetAtt SummariseFunction.Arn
+            End: true
+      Policies:
+        - LambdaInvokePolicy: { FunctionName: !Ref ListTreesFunction }
+        - LambdaInvokePolicy: { FunctionName: !Ref CheckTreeFunction }
+        - LambdaInvokePolicy: { FunctionName: !Ref SummariseFunction }
+      Events:
+        SixEveryMorningIST:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: cron(0 6 * * ? *)
+            ScheduleExpressionTimezone: Asia/Kolkata
+
   # Loads the example drive. Run once after the first deploy.
   SeedFunction:
     Type: AWS::Serverless::Function
@@ -102,3 +181,4 @@ Outputs:
   Table: { Value: !Ref Table }
   MediaBucket: { Value: !Ref MediaBucket }
   SeedFunction: { Value: !Ref SeedFunction }
+  MorningCheck: { Value: !Ref MorningCheck }
