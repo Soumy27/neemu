@@ -3,7 +3,7 @@
 
 import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, OrbitControls } from "@react-three/drei";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
 function seeded(seedText: string) {
@@ -160,8 +160,11 @@ function Ground({ wetness }: { wetness: number }) {
 }
 
 export function Tree3D({ seed, stage, health, wetness, watering }: { seed: string; stage: number; health: number; wetness: number; watering: boolean }) {
+  const [ready, setReady] = useState(false);
   return (
-    <Canvas shadows camera={{ position: [2.4, 1.8, 2.8], fov: 40 }} dpr={[1, 2]}>
+    <>
+    {!ready && <div className="tree-loading">Growing the tree…</div>}
+    <Canvas onCreated={() => setReady(true)} shadows camera={{ position: [2.4, 1.8, 2.8], fov: 40 }} dpr={[1, 2]}>
       <color attach="background" args={["#e9f3e1"]} />
       <hemisphereLight args={["#fff8e7", "#7d9b6a", 0.9]} />
       <directionalLight position={[3, 5, 2]} intensity={1.6} castShadow shadow-mapSize={[1024, 1024]} />
@@ -170,5 +173,6 @@ export function Tree3D({ seed, stage, health, wetness, watering }: { seed: strin
       <ContactShadows position={[0, 0.01, 0]} opacity={0.35} scale={4} blur={2.5} far={2} />
       <OrbitControls enablePan={false} minDistance={2} maxDistance={6} maxPolarAngle={Math.PI / 2.1} target={[0, 0.9, 0]} />
     </Canvas>
+    </>
   );
 }

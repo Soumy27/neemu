@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, partlyLive, SourceError, usingMock } from "../api/client";
 import { scenarioLabel, scenario } from "../api/mock";
 import { shareCard } from "./shareCard";
@@ -7,8 +7,12 @@ import { Buddies } from "./Buddies";
 import { SignInBar } from "./SignInBar";
 import { CallMe } from "./CallMe";
 import { Camera } from "./Camera";
+import { Drop, Flame } from "./icons";
 import { Tree3D } from "./Tree3D";
 import { listen, speak } from "./voice";
+
+const plantedLabel = (d: string) =>
+  new Date(`${d}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 const statusLabel: Record<Tree["status"], string> = {
   fine: "Happy",
@@ -37,9 +41,12 @@ export function AdopterApp({ treeId }: { treeId: string }) {
   const [lang, setLang] = useState<"hi" | "en">("hi");
   const [listening, setListening] = useState(false);
   const [camera, setCamera] = useState(false);
+  // Neemu speaks aloud only after a tap; on page load the line is shown, with a play button.
+  const voiceOn = useRef(false);
 
   useEffect(() => {
-    api.getTree(treeId).then(setTree).catch((e) => setError(errorText(e)));
+    // Everyone sees today's line straight away, adopted or not: it's the first thing a visitor should meet.
+    api.getTree(treeId).then((t) => { setTree(t); run(api.today(treeId), false); }).catch((e) => setError(errorText(e)));
   }, [treeId]);
 
   // Reveal the agent's tool steps one by one, then Neemu speaks.
@@ -47,11 +54,12 @@ export function AdopterApp({ treeId }: { treeId: string }) {
     if (!says) return;
     setShownSteps(0);
     const timers = says.steps.map((_, i) => setTimeout(() => setShownSteps(i + 1), 450 * (i + 1)));
-    const talk = setTimeout(() => setVoiceVia(speak(says.textHi, says.audioUrl).via), 450 * (says.steps.length + 1));
+    const talk = setTimeout(() => voiceOn.current && setVoiceVia(speak(says.textHi, says.audioUrl).via), 450 * (says.steps.length + 1));
     return () => [...timers, talk].forEach(clearTimeout);
   }, [says]);
 
-  async function run(p: Promise<NeemuSays>) {
+  async function run(p: Promise<NeemuSays>, voice = true) {
+    voiceOn.current = voice;
     setThinking(true);
     setError(null);
     setShowWhy(false);
@@ -117,25 +125,27 @@ export function AdopterApp({ treeId }: { treeId: string }) {
       {usingMock && <div className="banner">{partlyLive ? (scenario === "today" ? "Live: weather, water and Neemu's voice come from the Neemu API on AWS. Some screens still use examples." : scenarioLabel[scenario].replace("The tree and its owner are examples.", "Live from the Neemu API.")) : scenarioLabel[scenario]}</div>}
       {says?.heatwave?.active && (
         <div className="boss" role="status">
-          <strong>🔥 Heat day boss · {says.heatwave.tMaxC} °C</strong>
+          <strong><Flame /> Heat day boss · {says.heatwave.tMaxC} °C</strong>
           <span>Every tree in the drive needs water before 6 PM. Beat the heat, keep your streak.</span>
         </div>
       )}
 
       <section className="stage">
         <Tree3D seed={tree.id} stage={tree.growthStage} health={tree.health} wetness={wetness} watering={watering} />
-        <div className={`status status-${tree.status}`}>{statusLabel[tree.status]}</div>
+        <div className={`status status-${tree.adopter ? tree.status : tree.water.litresNeeded > 0 ? "thirsty" : "fine"}`}>
+          {tree.adopter ? statusLabel[tree.status] : `Needs an adopter${tree.water.litresNeeded > 0 ? ` · ${Math.round(tree.water.litresNeeded)} L today` : ""}`}
+        </div>
       </section>
 
       <section className="card">
         <div className="name-row">
           <div>
             <h1>{tree.name}</h1>
-            <p className="muted">{tree.species} · planted {tree.plantedOn} · {tree.location.label}</p>
+            <p className="muted">{tree.species} · planted {plantedLabel(tree.plantedOn)} · {tree.location.label}</p>
           </div>
           <div className="stats">
-            <div className="streak" title="Days in a row">🔥 {tree.streakDays}</div>
-            <div className="saved" title="Litres Neemu told you not to give, because rain covered it">💧 {tree.litresSaved} L saved</div>
+            <div className="streak" title="Days in a row"><Flame /> {tree.streakDays}</div>
+            <div className="saved" title="Litres Neemu told you not to give, because rain covered it"><Drop /> {Math.round(tree.litresSaved)} L saved</div>
           </div>
         </div>
         <div className="meter" aria-label={`Health ${tree.health} of 100`}>
@@ -143,6 +153,43 @@ export function AdopterApp({ treeId }: { treeId: string }) {
         </div>
         <p className="muted small">Health {tree.health}/100 · growth stage {tree.growthStage} of 5</p>
       </section>
+
+        <section className="card speech">
+          {!says && !thinking && <button className="primary" onClick={() => run(api.today(treeId))}>Ask {tree.name} how it's doing</button>}
+
+          {(thinking || says) && (
+            <ol className="steps">
+              {thinking && <li className="step pending">{tree.name} is checking the weather…</li>}
+              {says?.steps.slice(0, shownSteps).map((s, i) => (
+                <li key={i} className={`step ${s.ok ? "ok" : "bad"}`}><code>{s.tool}</code> {s.summary}</li>
+              ))}
+            </ol>
+          )}
+
+          {says && shownSteps >= says.steps.length && (
+            <>
+              {says.replay && <p className="muted small">Replay of {says.asOf}, real weather for that day.</p>}
+              <blockquote lang="hi">{says.textHi}</blockquote>
+              <p className="muted">{says.textEn}</p>
+              <div className="row wrap">
+                <button onClick={() => setVoiceVia(speak(says.textHi, says.audioUrl).via)}>▶ Hear {tree.name}</button>
+                <button onClick={() => setShowWhy((v) => !v)}>{showWhy ? "Hide" : "Why?"}</button>
+                <button onClick={() => shareCard(tree, says)}>Share</button>
+                {says.spokenBy === "template" && <span className="muted small">The AI is offline, so {tree.name} is using a fixed sentence. The numbers are still computed.</span>}
+                {voiceVia === "browser" && <span className="muted small">Browser voice stands in for Amazon Polly in demo mode.</span>}
+              </div>
+              {showWhy && (
+                <table className="facts">
+                  <tbody>
+                    {says.facts.map((f) => (
+                      <tr key={f.label}><td>{f.label}</td><td>{f.value}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </>
+          )}
+        </section>
 
       {!tree.adopter ? (
         <section className="card">
@@ -155,42 +202,6 @@ export function AdopterApp({ treeId }: { treeId: string }) {
         </section>
       ) : (
         <>
-          <section className="card speech">
-            {!says && !thinking && <button className="primary" onClick={() => run(api.today(treeId))}>Ask {tree.name} how it's doing</button>}
-
-            {(thinking || says) && (
-              <ol className="steps">
-                {thinking && <li className="step pending">{tree.name} is checking the weather…</li>}
-                {says?.steps.slice(0, shownSteps).map((s, i) => (
-                  <li key={i} className={`step ${s.ok ? "ok" : "bad"}`}><code>{s.tool}</code> {s.summary}</li>
-                ))}
-              </ol>
-            )}
-
-            {says && shownSteps >= says.steps.length && (
-              <>
-                {says.replay && <p className="muted small">Replay of {says.asOf}, real weather for that day.</p>}
-                <blockquote lang="hi">{says.textHi}</blockquote>
-                <p className="muted">{says.textEn}</p>
-                <div className="row wrap">
-                  <button onClick={() => setVoiceVia(speak(says.textHi, says.audioUrl).via)}>▶ Hear {tree.name}</button>
-                  <button onClick={() => setShowWhy((v) => !v)}>{showWhy ? "Hide" : "Why?"}</button>
-                  <button onClick={() => shareCard(tree, says)}>Share</button>
-                  {says.spokenBy === "template" && <span className="muted small">The AI is offline, so {tree.name} is using a fixed sentence. The numbers are still computed.</span>}
-                  {voiceVia === "browser" && <span className="muted small">Browser voice stands in for Amazon Polly in demo mode.</span>}
-                </div>
-                {showWhy && (
-                  <table className="facts">
-                    <tbody>
-                      {says.facts.map((f) => (
-                        <tr key={f.label}><td>{f.label}</td><td>{f.value}</td></tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </>
-            )}
-          </section>
 
           {says?.ask === "water" && (
             <section className="card">
