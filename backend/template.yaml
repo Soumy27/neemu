@@ -1,0 +1,91 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Neemu - the tree that calls you when it's thirsty. API, water balance, voice.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures: [x86_64]
+    CodeUri: src/
+    Timeout: 28
+    MemorySize: 512
+    Environment:
+      Variables:
+        TABLE: !Ref Table
+        MEDIA_BUCKET: !Ref MediaBucket
+
+Resources:
+  Table:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: pk, AttributeType: S }
+        - { AttributeName: sk, AttributeType: S }
+      KeySchema:
+        - { AttributeName: pk, KeyType: HASH }
+        - { AttributeName: sk, KeyType: RANGE }
+
+  # Proof photos and Neemu's spoken lines. Private; the API hands out short-lived links.
+  MediaBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: [PUT, GET]
+            AllowedOrigins: ["*"]
+            AllowedHeaders: ["*"]
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - { Id: expire-proofs, Prefix: proofs/, Status: Enabled, ExpirationInDays: 30 }
+          - { Id: expire-audio, Prefix: audio/, Status: Enabled, ExpirationInDays: 30 }
+
+  Api:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins: ["*"]
+        AllowMethods: [GET, POST, OPTIONS]
+        AllowHeaders: [content-type]
+        MaxAge: 600
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 40
+        ThrottlingRateLimit: 20
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: api.handler
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref Table }
+        - S3CrudPolicy: { BucketName: !Ref MediaBucket }
+        - Statement:
+            - Effect: Allow
+              Action: polly:SynthesizeSpeech
+              Resource: "*"
+      Events:
+        GetTree:   { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET,  Path: "/trees/{id}" } }
+        Adopt:     { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/trees/{id}/adopt" } }
+        Today:     { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET,  Path: "/trees/{id}/today" } }
+        GetDrive:  { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET,  Path: "/drives/{id}" } }
+        Remind:    { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/drives/{id}/remind" } }
+
+  # Loads the example drive. Run once after the first deploy.
+  SeedFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: seed.handler
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref Table }
+
+Outputs:
+  ApiUrl: { Value: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com" }
+  Table: { Value: !Ref Table }
+  MediaBucket: { Value: !Ref MediaBucket }
+  SeedFunction: { Value: !Ref SeedFunction }
