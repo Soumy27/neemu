@@ -5,6 +5,7 @@ engine.py; nothing here asks a model for a figure.
 """
 import json
 
+import agent
 import drives
 import engine
 import proofs
@@ -38,12 +39,26 @@ def adopt(tree_id, query, body):
     return tree
 
 
-def says_for(meta: dict, as_of, replay: bool, audio: bool = True) -> dict:
+def _voice(meta: dict, states, ahead, question, says: dict) -> dict:
+    """Let the agent say it. On any failure keep the fixed sentence and say so in the steps."""
+    try:
+        hi, en, steps = agent.run(meta, states, ahead, question)
+        says.update(textHi=hi, textEn=en, steps=steps, spokenBy="agent")
+    except agent.AgentUnavailable as e:
+        print(f"AGENT unavailable for {meta['id']}: {str(e)[:200]}")
+    except agent.NotGrounded as e:
+        print(f"AGENT reply rejected for {meta['id']}: {e}")
+        says["steps"] = says["steps"] + [{"tool": "check_reply", "ok": False,
+                                          "summary": "The AI's sentence did not match the numbers, so the fixed sentence is used"}]
+    return says
+
+
+def says_for(meta: dict, as_of, replay: bool, audio: bool = True, question: str | None = None) -> dict:
     tree, states, ahead = views.tree_view(meta, store.proofs(meta["id"]), as_of, replay)
     s = states[-1]
     text_hi, text_en = speak.template(meta, s, views.days_until_next_ask(ahead))
     needs = s.ask == "water" and s.litres_given <= 0
-    return {
+    says = {
         "ask": s.ask if (s.ask != "water" or needs) else "none",
         "heatwave": engine.heat_day(s),
         "spokenBy": "template",
@@ -52,10 +67,15 @@ def says_for(meta: dict, as_of, replay: bool, audio: bool = True) -> dict:
         "litres": s.litres_asked if needs else 0,
         "textHi": text_hi,
         "textEn": text_en,
-        "audioUrl": speak.audio_url(text_hi) if audio else None,
+        "audioUrl": None,
         "facts": speak.facts_for(meta, s),
         "steps": speak.steps_for(meta, s),
     }
+    if question is None:
+        _voice(meta, states, ahead, None, says)
+    if audio:
+        says["audioUrl"] = speak.audio_url(says["textHi"])
+    return says
 
 
 def today(tree_id, query, body):
@@ -68,16 +88,9 @@ TOMORROW = ("tomorrow", "kal", "कल")
 WHY = ("why", "kyun", "kyon", "क्यों", "क्यूँ")
 
 
-def talk(tree_id, query, body):
-    """Answer a question. Until the agent can run, three fixed kinds of answer, all from the engine."""
-    meta = _tree_or_404(tree_id)
-    text = body.get("text")
-    if not isinstance(text, str) or not (1 <= len(text.strip()) <= 300):
-        raise BadRequest("bad_text", "Ask Neemu something in 1 to 300 characters.")
-    as_of, replay = _as_of(query)
-    says = says_for(meta, as_of, replay, audio=False)
+def _template_answer(text: str, says: dict, states, ahead):
+    """Without the agent: fixed answers for "tomorrow" and "why"; anything else gets today's line."""
     t = text.lower()
-    _, states, ahead = views.tree_view(meta, store.proofs(tree_id), as_of, replay)
     if any(k in t for k in TOMORROW) and ahead:
         n = ahead[0]
         rain, tmax = speak._n(n.rain_mm), speak._n(n.tmax_c)
@@ -93,6 +106,20 @@ def talk(tree_id, query, body):
                           f"{speak._n(s.rain_48h_mm)} मिलीमीटर बारिश हुई। मेरी जड़ों के पास {speak._n(round(s.depletion_due_mm, 1))} मिलीमीटर पानी कम है।")
         says["textEn"] = (f"My soil loses {speak._n(round(s.et0_mm, 1))} mm today and {speak._n(s.rain_48h_mm)} mm of rain fell in the "
                           f"last two days. My roots are {speak._n(round(s.depletion_due_mm, 1))} mm short of full.")
+
+
+def talk(tree_id, query, body):
+    """Answer a question: the agent if Bedrock is reachable, otherwise a fixed answer from the engine."""
+    meta = _tree_or_404(tree_id)
+    text = body.get("text")
+    if not isinstance(text, str) or not (1 <= len(text.strip()) <= 300):
+        raise BadRequest("bad_text", "Ask Neemu something in 1 to 300 characters.")
+    as_of, replay = _as_of(query)
+    says = says_for(meta, as_of, replay, audio=False, question=text.strip())
+    _, states, ahead = views.tree_view(meta, store.proofs(tree_id), as_of, replay)
+    _voice(meta, states, ahead, text.strip(), says)
+    if says["spokenBy"] == "template":
+        _template_answer(text, says, states, ahead)
     says["audioUrl"] = speak.audio_url(says["textHi"])
     return says
 

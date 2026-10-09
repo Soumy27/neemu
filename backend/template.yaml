@@ -8,7 +8,7 @@ Globals:
     Architectures: [x86_64]
     CodeUri: src/
     Timeout: 28
-    MemorySize: 512
+    MemorySize: 1024
     Environment:
       Variables:
         TABLE: !Ref Table
@@ -69,6 +69,11 @@ Resources:
             - Effect: Allow
               Action: polly:SynthesizeSpeech
               Resource: "*"
+            - Effect: Allow
+              Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream]
+              Resource:
+                - arn:aws:bedrock:*::foundation-model/amazon.nova-*
+                - !Sub arn:aws:bedrock:*:${AWS::AccountId}:inference-profile/*amazon.nova-*
       Events:
         GetTree: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET, Path: "/trees/{id}" } }
         Adopt: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/trees/{id}/adopt" } }
@@ -108,6 +113,11 @@ Resources:
             - Effect: Allow
               Action: polly:SynthesizeSpeech
               Resource: "*"
+            - Effect: Allow
+              Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream]
+              Resource:
+                - arn:aws:bedrock:*::foundation-model/amazon.nova-*
+                - !Sub arn:aws:bedrock:*:${AWS::AccountId}:inference-profile/*amazon.nova-*
 
   SummariseFunction:
     Type: AWS::Serverless::Function
