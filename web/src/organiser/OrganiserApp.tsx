@@ -90,7 +90,7 @@ export default function OrganiserApp({ driveId }: { driveId: string }) {
         {reminded !== null && <p className="result accepted" role="status">Reminder sent to {reminded} adopters.</p>}
       </section>
 
-      <ReviewQueue driveId={driveId} />
+      <ReviewQueue drive={drive} />
 
       <div className="org-main">
         <section className="map-col">

@@ -61,6 +61,7 @@ button.danger { color: var(--red); border-color: var(--red); }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .pair figure { margin: 0; }
 .pair img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; display: block; background: var(--line); }
+.no-photo { aspect-ratio: 4 / 3; display: grid; place-items: center; border-radius: 8px; background: var(--line); color: var(--muted); font-size: 12px; text-align: center; }
 .pair figcaption { font-size: 12px; color: var(--muted); margin-top: 4px; }
 .review-meta { margin: 10px 0; }
 

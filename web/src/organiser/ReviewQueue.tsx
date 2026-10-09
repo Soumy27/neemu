@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { errorText, organiserApi } from "./organiserApi";
+import type { Drive } from "../api/types";
 import type { Review, ReviewVerdict } from "./organiserApi";
 
 function ago(iso: string): string {
@@ -11,18 +12,19 @@ const outcome: Record<string, string> = {
   confirmed: "Confirmed. The watering stays on the record.",
   rejected: "Marked as a different tree. The credit is undone.",
   pending: "Left for a water buddy to check.",
+  none: "Recorded.",
 };
 
 // Nothing on the trees says which one a photo shows, so a person checks a share of proofs against the reference photo.
-export function ReviewQueue({ driveId }: { driveId: string }) {
+export function ReviewQueue({ drive }: { drive: Drive }) {
   const [reviews, setReviews] = useState<Review[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [last, setLast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    organiserApi.getReviews(driveId).then(setReviews).catch((e) => setError(errorText(e)));
-  }, [driveId]);
+    organiserApi.getReviews(drive).then(setReviews).catch((e) => setError(errorText(e)));
+  }, [drive]);
 
   async function vote(r: Review, verdict: ReviewVerdict) {
     setBusy(r.proofId);
@@ -49,7 +51,10 @@ export function ReviewQueue({ driveId }: { driveId: string }) {
         {reviews?.map((r) => (
           <article key={r.proofId} className="review">
             <div className="pair">
-              <figure><img src={r.referencePhotoUrl} alt={`Reference photo of ${r.treeName}`} /><figcaption>Reference</figcaption></figure>
+              <figure>
+                {r.referencePhotoUrl ? <img src={r.referencePhotoUrl} alt={`Reference photo of ${r.treeName}`} /> : <div className="no-photo">No reference photo yet</div>}
+                <figcaption>Reference</figcaption>
+              </figure>
               <figure><img src={r.proofPhotoUrl} alt={`Watering photo for ${r.treeName}`} /><figcaption>Watering photo, {ago(r.takenAt)}</figcaption></figure>
             </div>
             <p className="review-meta">

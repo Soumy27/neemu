@@ -1,5 +1,5 @@
 // Organiser-only calls: registering saplings and the same-tree review queue.
-// Kept beside the screens while docs/api-contract.md settles; the paths marked "assumed" are not in it yet.
+// Shapes follow docs/api-contract.md; the one path marked "assumed" is not in it yet.
 
 import { api, SourceError, usingMock } from "../api/client";
 import type { ApiError, Drive, Tree, TreeStatus } from "../api/types";
@@ -20,14 +20,14 @@ export interface Review {
   treeId: string;
   treeName: string;
   proofPhotoUrl: string;
-  referencePhotoUrl: string;
+  referencePhotoUrl: string | null;
   takenAt: string;
   distanceM: number | null;
   accuracyM: number | null;
 }
 
 export type ReviewVerdict = "same" | "unsure" | "different";
-export type ReviewState = "pending" | "confirmed" | "rejected";
+export type ReviewState = "none" | "pending" | "confirmed" | "rejected";
 
 export interface Register {
   drive: Drive;
@@ -58,7 +58,7 @@ export const organiserApi = {
     const drive = await api.getDrive(driveId);
     if (usingMock) return mockRegister(drive);
     const referencePhotos: Record<string, string> = {};
-    for (const t of drive.trees as (Tree & { referencePhotoUrl?: string | null })[]) {
+    for (const t of drive.trees) {
       if (t.referencePhotoUrl) referencePhotos[t.id] = t.referencePhotoUrl;
     }
     return { drive, referencePhotos };
@@ -71,15 +71,15 @@ export const organiserApi = {
     const put = await fetch(uploadUrl, { method: "PUT", body: s.photo, headers: { "content-type": s.photo.type } });
     if (!put.ok) throw new SourceError("s3", `Photo upload failed (HTTP ${put.status})`);
     return call(`/drives/${driveId}/trees`, post({
-      name: s.name, species: s.species, lat: s.lat, lng: s.lng, accuracyM: s.accuracyM, photoKey: key,
+      name: s.name, species: s.species, lat: s.lat, lng: s.lng, accuracyM: s.accuracyM, referencePhotoKey: key,
     }));
   },
 
-  // Assumed: the organiser's queue is per drive, since an organiser has no adopter handle.
-  getReviews: (driveId: string): Promise<Review[]> =>
-    usingMock ? mockReviews(driveId) : call(`/drives/${driveId}/reviews`),
+  // The organiser reviews under the drive's organiser name, as the contract's `for` handle.
+  getReviews: (drive: Drive): Promise<Review[]> =>
+    usingMock ? mockReviews(drive.id) : call(`/reviews?for=${encodeURIComponent(drive.organiser)}`),
 
-  review: (proofId: string, verdict: ReviewVerdict): Promise<{ proofId: string; review: ReviewState }> =>
+  review: (proofId: string, verdict: ReviewVerdict): Promise<{ review: ReviewState }> =>
     usingMock ? mockReview(proofId, verdict) : call(`/proofs/${proofId}/review`, post({ verdict })),
 };
 
@@ -121,8 +121,10 @@ async function mockAddSapling(driveId: string, s: NewSapling): Promise<Tree> {
   const drive = await api.getDrive(driveId);
   const added = readAdded();
   const n = drive.trees.length + added.length + 1;
+  const photo = await toDataUrl(s.photo);
   const tree: Tree = {
     ...drive.trees[0],
+    referencePhotoUrl: photo,
     id: `${driveId}-${String(n).padStart(3, "0")}`,
     name: s.name,
     species: s.species,
@@ -137,7 +139,7 @@ async function mockAddSapling(driveId: string, s: NewSapling): Promise<Tree> {
     litresSaved: 0,
     water: { ...drive.trees[0].water, deficitMm: 0, litresNeeded: 0, lastWateredAt: null },
   };
-  added.push({ tree, photo: await toDataUrl(s.photo) });
+  added.push({ tree, photo });
   try {
     sessionStorage.setItem(STORE, JSON.stringify(added));
   } catch {
@@ -190,5 +192,5 @@ async function mockReview(proofId: string, verdict: ReviewVerdict) {
   queue = (queue ?? []).filter((r) => r.proofId !== proofId);
   // The organiser's vote settles it either way; "not sure" leaves it for a water buddy.
   const review: ReviewState = verdict === "same" ? "confirmed" : verdict === "different" ? "rejected" : "pending";
-  return { proofId, review };
+  return { review };
 }
