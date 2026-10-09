@@ -90,12 +90,14 @@ def simulate(
     watered: Callable[[date, float], float],
     streak_from: Optional[date] = None,
     start_depletion_mm: Optional[float] = None,
+    crop_factor: float = CROP_FACTOR,
 ) -> list[DayState]:
     """Run the balance over consecutive days.
 
     watered(day, litres_asked) returns the litres actually poured that day (0 if none).
     streak_from is the first day that counts towards the streak (the adoption day).
     start_depletion_mm is how dry the soil is on the first day, when someone has looked.
+    crop_factor is the species' Kc: how thirsty it is next to the reference grass of ET0.
     """
     depletion = RAW_MM / 2 if start_depletion_mm is None else min(TAW_MM, max(0.0, start_depletion_mm))
     health = START_HEALTH
@@ -110,7 +112,7 @@ def simulate(
     for w in weather:
         rain = effective_rain(w.rain_mm)
         rain_48h = rain + prev_rain
-        demand = stress_factor(depletion) * CROP_FACTOR * w.et0_mm
+        demand = stress_factor(depletion) * crop_factor * w.et0_mm
         due = min(TAW_MM, max(0.0, depletion + demand - rain))
 
         if due >= RAW_MM:
@@ -124,7 +126,7 @@ def simulate(
         end = min(TAW_MM, max(0.0, due - given / basin_m2))
 
         if ask == "skip":
-            saved += min(rain_48h, CROP_FACTOR * w.et0_mm) * basin_m2
+            saved += min(rain_48h, crop_factor * w.et0_mm) * basin_m2
 
         unanswered = unanswered + 1 if ask == "water" and given <= 0 else 0
 
