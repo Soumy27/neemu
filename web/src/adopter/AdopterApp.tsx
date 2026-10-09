@@ -4,6 +4,7 @@ import { scenarioLabel, scenario } from "../api/mock";
 import { shareCard } from "./shareCard";
 import type { NeemuSays, ProofResult, Tree } from "../api/types";
 import { Buddies } from "./Buddies";
+import { SignInBar } from "./SignInBar";
 import { Camera } from "./Camera";
 import { Tree3D } from "./Tree3D";
 import { listen, speak } from "./voice";
@@ -111,6 +112,7 @@ export function AdopterApp({ treeId }: { treeId: string }) {
 
   return (
     <div className="adopter">
+      <SignInBar />
       {usingMock && <div className="banner">{partlyLive ? (scenario === "today" ? "Live: weather, water and Neemu's voice come from the Neemu API on AWS. Some screens still use examples." : scenarioLabel[scenario].replace("The tree and its owner are examples.", "Live from the Neemu API.")) : scenarioLabel[scenario]}</div>}
       {says?.heatwave?.active && (
         <div className="boss" role="status">

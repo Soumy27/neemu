@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { api, usingMock } from "../api/client";
 import type { Tree } from "../api/types";
+import { SignInBar } from "./SignInBar";
 
 const statusDot: Record<Tree["status"], string> = { fine: "🟢", thirsty: "🟠", no_proof: "🔴", likely_dead: "⚫" };
 
@@ -32,6 +33,7 @@ export function NearbyPicker({ driveId }: { driveId: string }) {
 
   return (
     <div className="adopter">
+      <SignInBar />
       <section className="card">
         <h1>Saplings near you</h1>
         <p className="muted">Pick the one in front of you. It will tell you when it's thirsty, and when it isn't.</p>
