@@ -1,28 +1,8 @@
 import type { FeatureCollection } from "geojson";
-import * as maplibregl from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
-import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { useEffect, useRef, useState } from "react";
 import type { Tree } from "../api/types";
+import { hasWebGl as detectWebGl, MAP_STYLE, maplibregl } from "./mapSetup";
 import { statusColor } from "./status";
-
-// Vite cannot find the library's worker file on its own, so hand it over.
-maplibregl.setWorkerUrl(workerUrl);
-
-// OSM tiles until the Amazon Location Service map is set up; then set VITE_MAP_STYLE_URL.
-const STYLE: string | maplibregl.StyleSpecification = (import.meta.env.VITE_MAP_STYLE_URL as string | undefined) ?? {
-  version: 8,
-  sources: {
-    osm: {
-      type: "raster",
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-      tileSize: 256,
-      maxzoom: 18,
-      attribution: "© OpenStreetMap contributors",
-    },
-  },
-  layers: [{ id: "osm", type: "raster", source: "osm" }],
-};
 
 function toGeoJson(trees: Tree[]): FeatureCollection {
   return {
@@ -44,7 +24,7 @@ export function RegisterMap({ trees, selectedId, onSelect }: {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const onSelectRef = useRef(onSelect);
   const [ready, setReady] = useState(false);
-  const [hasWebGl] = useState(() => !!document.createElement("canvas").getContext("webgl2"));
+  const [hasWebGl] = useState(detectWebGl);
   const fitted = useRef(false);
 
   useEffect(() => {
@@ -53,7 +33,7 @@ export function RegisterMap({ trees, selectedId, onSelect }: {
 
   useEffect(() => {
     if (!hasWebGl) return;
-    const map = new maplibregl.Map({ container: box.current!, style: STYLE, center: [77.1177, 28.7501], zoom: 16, maxZoom: 18 });
+    const map = new maplibregl.Map({ container: box.current!, style: MAP_STYLE, center: [77.1177, 28.7501], zoom: 16, maxZoom: 18 });
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     map.on("load", () => {

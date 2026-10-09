@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, SourceError, usingMock } from "../api/client";
+import { api, usingMock } from "../api/client";
 import type { Drive, Tree, TreeStatus } from "../api/types";
+import { errorText, organiserApi } from "./organiserApi";
 import { RegisterMap } from "./RegisterMap";
+import { ReviewQueue } from "./ReviewQueue";
 import { daysSince, statusHint, statusLabel, statusOrder } from "./status";
 import "./organiser.css";
 
-function errorText(e: unknown) {
-  return e instanceof SourceError ? `${e.source} failed: ${e.message}` : String(e);
-}
-
 export default function OrganiserApp({ driveId }: { driveId: string }) {
   const [drive, setDrive] = useState<Drive | null>(null);
+  const [referencePhotos, setReferencePhotos] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<TreeStatus | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reminding, setReminding] = useState(false);
@@ -18,7 +17,12 @@ export default function OrganiserApp({ driveId }: { driveId: string }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.getDrive(driveId).then(setDrive).catch((e) => setError(errorText(e)));
+    organiserApi.getRegister(driveId)
+      .then((r) => {
+        setDrive(r.drive);
+        setReferencePhotos(r.referencePhotos);
+      })
+      .catch((e) => setError(errorText(e)));
   }, [driveId]);
 
   const rows = useMemo(() => {
@@ -59,7 +63,10 @@ export default function OrganiserApp({ driveId }: { driveId: string }) {
           <h1>{drive.name}</h1>
           <p className="muted">{drive.organiser} · survival register · {alive} of {total} saplings alive</p>
         </div>
-        <a className="button" href={`?view=tags&drive=${encodeURIComponent(driveId)}`}>Print QR tags</a>
+        <div className="row wrap">
+          <a className="button" href={`?view=poster&drive=${encodeURIComponent(driveId)}`}>Drive poster</a>
+          <a className="button primary" href={`?view=add&drive=${encodeURIComponent(driveId)}`}>Add saplings</a>
+        </div>
       </header>
 
       <div className="tiles">
@@ -83,6 +90,8 @@ export default function OrganiserApp({ driveId }: { driveId: string }) {
         {reminded !== null && <p className="result accepted" role="status">Reminder sent to {reminded} adopters.</p>}
       </section>
 
+      <ReviewQueue driveId={driveId} />
+
       <div className="org-main">
         <section className="map-col">
           <RegisterMap trees={rows} selectedId={selectedId} onSelect={onSelect} />
@@ -95,6 +104,7 @@ export default function OrganiserApp({ driveId }: { driveId: string }) {
                 </div>
                 <span className={`pill pill-${selected.status}`}>{statusLabel[selected.status]}</span>
               </div>
+              {referencePhotos[selected.id] && <img className="ref-preview" src={referencePhotos[selected.id]} alt={`Reference photo of ${selected.name}`} />}
               <table className="facts">
                 <tbody>
                   <tr><td>Adopter</td><td>{selected.adopter?.handle ?? "nobody yet"}</td></tr>

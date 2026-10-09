@@ -52,17 +52,41 @@ a.button { display: inline-block; padding: 10px 12px; border-radius: 10px; borde
   .register-map { height: 320px; }
 }
 
-/* QR tags: always black on white, on screen and on paper. */
-.tag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
-.tag { background: #fff; color: #000; border: 1px dashed #888; border-radius: 8px; padding: 10px; text-align: center; break-inside: avoid; }
-.qr { width: 100%; height: auto; display: block; shape-rendering: crispEdges; }
-.tag-id { font-family: ui-monospace, Consolas, monospace; font-size: 19px; font-weight: 700; letter-spacing: 0.02em; margin-top: 6px; white-space: nowrap; }
-.tag-name { font-size: 14px; margin-top: 2px; }
+a.button.primary { background: var(--green); color: #fff; border-color: var(--green); font-weight: 600; }
+button.danger { color: var(--red); border-color: var(--red); }
+
+/* Review queue: reference photo beside the watering photo. */
+.reviews { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-top: 12px; }
+.review { border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pair figure { margin: 0; }
+.pair img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; display: block; background: var(--line); }
+.pair figcaption { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.review-meta { margin: 10px 0; }
+
+/* Add saplings */
+.add-col .card:first-child { margin-top: 0; }
+.step h2 { margin-bottom: 10px; }
+.pin-line { margin: 10px 0 0; font-variant-numeric: tabular-nums; }
+.ref-preview { display: block; width: 100%; max-height: 240px; object-fit: cover; border-radius: 10px; margin-top: 10px; }
+.save { margin-top: 12px; width: 100%; }
+.added { list-style: none; margin: 0; padding: 0; }
+.added li { padding: 6px 0; border-bottom: 1px solid var(--line); }
+
+/* Drive poster: always black on white, on screen and on paper. */
+.poster { background: #fff; color: #000; border: 1px solid var(--line); border-radius: 12px; padding: 28px; max-width: 520px; margin: 0 auto 16px; text-align: center; }
+.poster-title { font-size: 40px; margin: 0; }
+.poster-sub { font-size: 18px; margin: 4px 0 16px; }
+.qr { width: 100%; max-width: 320px; height: auto; display: block; margin: 0 auto; shape-rendering: crispEdges; }
+.poster-steps { text-align: left; font-size: 18px; line-height: 1.6; max-width: 360px; margin: 16px auto; padding-left: 24px; }
+.poster-foot { font-size: 14px; margin: 0; }
+.poster-link { font-family: ui-monospace, Consolas, monospace; font-size: 12px; word-break: break-all; }
+.share-text { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px; overflow-wrap: anywhere; }
 
 @media print {
-  @page { size: A4; margin: 10mm; }
+  @page { size: A4; margin: 15mm; }
   body { background: #fff; }
   .no-print { display: none; }
   .tags { max-width: none; padding: 0; }
-  .tag-grid { grid-template-columns: repeat(3, 1fr); gap: 6mm; }
+  .poster { border: 0; max-width: none; }
 }
