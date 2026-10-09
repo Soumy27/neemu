@@ -17,7 +17,7 @@ export function Buddies({ treeId, treeName, me }: { treeId: string; treeName: st
   const [voted, setVoted] = useState<string | null>(null);
 
   useEffect(() => {
-    api.buddies(treeId).then(setBuddies).catch(() => {});
+    api.buddies(treeId).then((b) => setBuddies(b.slice(0, 3))).catch(() => {});
     api.reviews(me).then(setQueue).catch(() => {});
   }, [treeId, me]);
 
@@ -26,7 +26,7 @@ export function Buddies({ treeId, treeName, me }: { treeId: string; treeName: st
   }
 
   async function vote(r: Review, verdict: "same" | "unsure" | "different") {
-    const res = await api.review(r.proofId, verdict);
+    const res = await api.review(r.proofId, verdict, me);
     setVoted(res.review === "confirmed" ? `Thanks. ${r.treeName}'s watering is confirmed.` : res.review === "rejected" ? "Thanks. That proof won't count." : "Thanks. Someone else will take a look too.");
     setQueue((q) => q.filter((x) => x.proofId !== r.proofId));
   }
@@ -39,7 +39,7 @@ export function Buddies({ treeId, treeName, me }: { treeId: string; treeName: st
           <p>Someone watered <strong>{r.treeName}</strong> near you {ago(r.takenAt)}. Is it the same tree as its first photo?</p>
           <div className="pair">
             <figure><img src={r.referencePhotoUrl ?? ""} alt={`${r.treeName}, first photo`} /><figcaption>First photo</figcaption></figure>
-            <figure><img src={r.proofPhotoUrl} alt={`${r.treeName}, today`} /><figcaption>Today{r.distanceM != null && ` · ${r.distanceM} m from the pin`}</figcaption></figure>
+            <figure><img src={r.proofPhotoUrl} alt={`${r.treeName}, today`} /><figcaption>Today{r.distanceM != null && ` · ${Math.round(r.distanceM)} m from the pin`}</figcaption></figure>
           </div>
           <div className="row wrap">
             <button className="primary" onClick={() => vote(r, "same")}>✓ Same tree</button>
@@ -57,7 +57,7 @@ export function Buddies({ treeId, treeName, me }: { treeId: string; treeName: st
         <ul className="buddies">
           {buddies.map((b) => (
             <li key={b.handle}>
-              <span><strong>{b.handle}</strong> · {b.treeName}, {b.distanceM} m away</span>
+              <span><strong>{b.handle}</strong> · {b.treeName}, {Math.round(b.distanceM)} m away</span>
               {asked?.to === b.handle ? (
                 <span className="muted small">Asked ✓</span>
               ) : (
@@ -66,7 +66,7 @@ export function Buddies({ treeId, treeName, me }: { treeId: string; treeName: st
             </li>
           ))}
         </ul>
-        {asked && <p className="muted small">{asked.to} gets a message: "{me} can't make it today. Can you water {treeName}? It's {asked.distanceM} m from your tree."</p>}
+        {asked && <p className="muted small">{asked.to} gets a message: "{me} can't make it today. Can you water {treeName}? It's {Math.round(asked.distanceM)} m from your tree."</p>}
       </section>
     </>
   );

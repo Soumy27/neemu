@@ -79,7 +79,7 @@ export function AdopterApp({ treeId }: { treeId: string }) {
     setResult(null);
     setError(null);
     try {
-      const r = await api.proof(treeId, file);
+      const r = await api.proof(treeId, file, tree?.adopter?.handle ?? "");
       setResult(r);
       setTree(r.tree);
       if (r.verdict === "accepted") {
@@ -204,7 +204,7 @@ export function AdopterApp({ treeId }: { treeId: string }) {
                 <div className={`result ${result.verdict}`}>
                   {result.verdict === "accepted" ? (
                     <p>
-                      Accepted. Location checked{result.distanceM != null && `: ${result.distanceM} m from the tree`}{result.accuracyM != null && ` (±${Math.round(result.accuracyM)} m)`}. Streak now {tree.streakDays}.
+                      Accepted. Location checked{result.distanceM != null && `: ${Math.round(result.distanceM)} m from the tree`}{result.accuracyM != null && ` (±${Math.round(result.accuracyM)} m)`}. Streak now {tree.streakDays}.
                       {result.review === "pending" && <><br />A water buddy will confirm it's the same tree.</>}
                     </p>
                   ) : (

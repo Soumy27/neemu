@@ -49,7 +49,8 @@ export const api = {
     live('talk') ? call(`/trees/${id}/talk`, post({ text, lang })) : mock.talk(id, text),
 
   // The photo comes from the in-app camera; position and its accuracy go with it.
-  async proof(id: string, file: File): Promise<ProofResult> {
+  // handle = who is sending it: the adopter, or a buddy covering today.
+  async proof(id: string, file: File, handle: string): Promise<ProofResult> {
     const pos = await new Promise<GeolocationPosition | null>((resolve) =>
       navigator.geolocation ? navigator.geolocation.getCurrentPosition(resolve, () => resolve(null), { enableHighAccuracy: true, timeout: 8000 }) : resolve(null),
     );
@@ -63,7 +64,7 @@ export const api = {
     const { uploadUrl, key } = await call<{ uploadUrl: string; key: string }>(`/trees/${id}/proof-url`, post({}));
     const put = await fetch(uploadUrl, { method: "PUT", body: file, headers: { "content-type": file.type } });
     if (!put.ok) throw new SourceError("s3", `Photo upload failed (HTTP ${put.status})`);
-    return call(`/trees/${id}/proof`, post({ key, takenAt: new Date().toISOString(), lat, lng, accuracyM }));
+    return call(`/trees/${id}/proof`, post({ key, takenAt: new Date().toISOString(), lat, lng, accuracyM, handle }));
   },
 
   buddies: (id: string): Promise<Buddy[]> =>
@@ -75,8 +76,9 @@ export const api = {
   reviews: (handle: string): Promise<Review[]> =>
     live('reviews') ? call(`/reviews?for=${encodeURIComponent(handle)}`) : mock.reviews(handle),
 
-  review: (proofId: string, verdict: "same" | "unsure" | "different"): Promise<{ review: ProofResult["review"] }> =>
-    live('review') ? call(`/proofs/${proofId}/review`, post({ verdict })) : mock.review(proofId, verdict),
+  // by = the reviewer's handle; the backend refuses a vote without it so it can never count as the organiser.
+  review: (proofId: string, verdict: "same" | "unsure" | "different", by: string): Promise<{ review: ProofResult["review"] }> =>
+    live('review') ? call(`/proofs/${proofId}/review`, post({ verdict, by })) : mock.review(proofId, verdict),
 
   nearby: (driveId: string, lat: number, lng: number): Promise<(Tree & { distanceM: number })[]> =>
     live('nearby') ? call(`/drives/${driveId}/nearby?lat=${lat}&lng=${lng}`) : mock.nearby(driveId, lat, lng),
