@@ -51,6 +51,7 @@ flowchart TB
 | **Strands Agents SDK** (AWS open source) on **Amazon Bedrock** | Neemu as an agent with four tools over the water balance | `agent.py` |
 | **AWS Step Functions** | The morning check: list the saplings, fan out one check each, summarise. A failing sapling does not stop the rest. | `template.yaml`, `daily.py` |
 | **Amazon EventBridge Scheduler** | Starts the morning check at 06:00 IST | `template.yaml` |
+| **AWS Systems Manager Parameter Store** | Holds the Web Push signing key, encrypted. It is never in the code or the repo. | `push.py` |
 | **Amazon Cognito** | Sign-in with a hosted page; an `organisers` group | `auth.py`, `web/src/api/auth.ts` |
 | **AWS Amplify Hosting** | Serves the web app over HTTPS, which the camera and location need | `backend/deploy-web.sh` |
 | **AWS SAM** (AWS open source) | The whole backend as one template | `template.yaml` |
@@ -80,5 +81,5 @@ ET0, rain and maximum temperature are real daily values from Open-Meteo for the 
 - **A sapling surviving its first summer cannot be shown in a weekend.** What runs is the daily loop on real weather. The replays (`?date=2026-05-19`, a real 44 °C day) show what the same loop does in the heat.
 - **Phone position can be faked**, and GPS cannot tell apart saplings two metres from each other. Position shows the person came; the review queue is what checks the tree.
 - **The 40 saplings of the example drive are illustrative.** Their adopters and past care are made up; each has a care pattern that the engine runs against real weather, so their statuses are computed.
-- **Reminders do not reach a phone.** The register records that a reminder was sent; no message goes out.
+- **Notifications reach only adopters who turned them on**, through the browser's own push service. On an iPhone the site has to be added to the home screen first. There is no SMS or call.
 - **Sign-in is optional for now.** Without a token the API believes the name in the request.

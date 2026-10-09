@@ -130,6 +130,9 @@ Resources:
               Resource:
                 - arn:aws:bedrock:*::foundation-model/amazon.nova-*
                 - !Sub arn:aws:bedrock:*:${AWS::AccountId}:inference-profile/*amazon.nova-*
+            - Effect: Allow
+              Action: ssm:GetParameter
+              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/neemu/vapid-*
       Events:
         GetTree: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET, Path: "/trees/{id}" } }
         Adopt: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/trees/{id}/adopt" } }
@@ -141,6 +144,8 @@ Resources:
         Cover: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/trees/{id}/cover" } }
         CoverAccept: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/covers/{id}/accept" } }
         CoverDecline: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/covers/{id}/decline" } }
+        Subscribe: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/trees/{id}/subscribe" } }
+        PushKey: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET, Path: "/push/key" } }
         GetDrive: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET, Path: "/drives/{id}" } }
         Remind: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/drives/{id}/remind" } }
         Nearby: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET, Path: "/drives/{id}/nearby" } }
@@ -174,6 +179,9 @@ Resources:
               Resource:
                 - arn:aws:bedrock:*::foundation-model/amazon.nova-*
                 - !Sub arn:aws:bedrock:*:${AWS::AccountId}:inference-profile/*amazon.nova-*
+            - Effect: Allow
+              Action: ssm:GetParameter
+              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/neemu/vapid-*
 
   SummariseFunction:
     Type: AWS::Serverless::Function
