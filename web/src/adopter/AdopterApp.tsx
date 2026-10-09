@@ -5,6 +5,7 @@ import { shareCard } from "./shareCard";
 import type { NeemuSays, ProofResult, Tree } from "../api/types";
 import { Buddies } from "./Buddies";
 import { SignInBar } from "./SignInBar";
+import { CallMe } from "./CallMe";
 import { Camera } from "./Camera";
 import { Tree3D } from "./Tree3D";
 import { listen, speak } from "./voice";
@@ -216,6 +217,8 @@ export function AdopterApp({ treeId }: { treeId: string }) {
               )}
             </section>
           )}
+
+          <CallMe treeId={tree.id} treeName={tree.name} handle={tree.adopter.handle} />
 
           <Buddies treeId={tree.id} treeName={tree.name} me={tree.adopter.handle} />
 
