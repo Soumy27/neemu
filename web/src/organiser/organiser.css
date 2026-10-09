@@ -56,9 +56,8 @@ a.button { display: inline-block; padding: 10px 12px; border-radius: 10px; borde
 .tag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
 .tag { background: #fff; color: #000; border: 1px dashed #888; border-radius: 8px; padding: 10px; text-align: center; break-inside: avoid; }
 .qr { width: 100%; height: auto; display: block; shape-rendering: crispEdges; }
-.tag-name { font-size: 20px; font-weight: 700; margin-top: 4px; }
-.tag-hi { font-size: 13px; }
-.tag-id { font-family: ui-monospace, Consolas, monospace; font-size: 13px; margin-top: 2px; }
+.tag-id { font-family: ui-monospace, Consolas, monospace; font-size: 19px; font-weight: 700; letter-spacing: 0.02em; margin-top: 6px; white-space: nowrap; }
+.tag-name { font-size: 14px; margin-top: 2px; }
 
 @media print {
   @page { size: A4; margin: 10mm; }
