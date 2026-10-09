@@ -25,6 +25,7 @@ ORGANISER_GROUP = "organisers"
 # Routes that change something. Reads stay open: anyone can open a tree and hear it.
 WRITES = {
     "POST /trees/{id}/adopt", "POST /trees/{id}/proof-url", "POST /trees/{id}/proof", "POST /trees/{id}/cover",
+    "POST /trees/{id}/subscribe",
     "POST /covers/{id}/accept", "POST /covers/{id}/decline", "POST /drives/{id}/remind",
     "POST /drives/{id}/photo-url", "POST /drives/{id}/trees", "POST /proofs/{id}/review",
 }
@@ -103,5 +104,5 @@ def apply(route: str, event: dict, query: dict, body: dict):
                 return
             raise BadRequest("no_name", "Adopt a sapling first, so we know what to call you.", 409)
         for key in ("handle", "by", "addedBy"):
-            if key in body or route in ("POST /trees/{id}/proof", "POST /proofs/{id}/review"):
+            if key in body or route in ("POST /trees/{id}/proof", "POST /proofs/{id}/review", "POST /trees/{id}/subscribe") and key != "addedBy":
                 body[key] = person["handle"]

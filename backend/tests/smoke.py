@@ -149,16 +149,36 @@ st, d = call("GET", f"/drives/{DRIVE}")
 alpha = next(t for t in d["trees"] if t["id"] == a["id"])
 check("register shows the last proof photo", st == 200 and alpha["lastProof"] and alpha["lastProof"]["photoUrl"], str(d["counts"]))
 
-st, e = call("POST", f"/proofs/{proof_id}/review", {"verdict": "same"})
-check("a vote with no name is refused", st == 400, e.get("error", {}).get("code"))
-
-# tidy up: remove everything this run wrote to the table
 def keys(pk):
     out = subprocess.run(["aws", "dynamodb", "query", "--table-name", TABLE, "--key-condition-expression", "pk = :p",
                           "--expression-attribute-values", json.dumps({":p": {"S": pk}}),
                           "--projection-expression", "pk, sk", "--output", "json"], check=True, capture_output=True)
     return json.loads(out.stdout)["Items"]
 
+
+# notifications
+import base64
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec
+b64 = lambda raw: base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+phone_key = b64(ec.generate_private_key(ec.SECP256R1()).public_key().public_bytes(
+    serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint))
+sub = lambda endpoint: {"endpoint": endpoint, "keys": {"p256dh": phone_key, "auth": b64(os.urandom(16))}}
+st, k = call("GET", "/push/key")
+check("the notification public key is served", st == 200 and len(k["publicKey"]) == 87, str(st))
+st, e = call("POST", f"/trees/{a['id']}/subscribe", {"subscription": sub("https://example.com/collect"), "handle": "asha"})
+check("a made-up push address is refused", st == 400 and e["error"]["code"] == "bad_push_service", str(st))
+st, e = call("POST", f"/trees/{a['id']}/subscribe", {"subscription": sub("https://fcm.googleapis.com/fcm/send/x"), "handle": "bilal"})
+check("only the adopter can subscribe a sapling", st == 403, e.get("error", {}).get("code"))
+st, r = call("POST", f"/trees/{a['id']}/subscribe", {"subscription": sub("https://fcm.googleapis.com/fcm/send/not-a-real-device"), "handle": "asha"})
+check("a dead subscription is signed, sent, refused by the push service, and handled", st == 200 and r == {"subscribed": True, "sent": 0}, str(r))
+left = [k for k in keys(f"TREE#{a['id']}") if k["sk"]["S"].startswith("PUSH#")]
+check("the dead subscription was removed", left == [], str(len(left)))
+
+st, e = call("POST", f"/proofs/{proof_id}/review", {"verdict": "same"})
+check("a vote with no name is refused", st == 400, e.get("error", {}).get("code"))
+
+# tidy up: remove everything this run wrote to the table
 removed = 0
 for pk in [f"DRIVE#{DRIVE}", f"REVIEWQ#{DRIVE}", f"TREE#{a['id']}", f"TREE#{b['id']}", "ADOPTER#asha", "ADOPTER#bilal"]:
     for k in keys(pk):

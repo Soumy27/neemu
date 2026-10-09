@@ -6,6 +6,7 @@ cannot hold up the rest. Each check stores what Neemu said that morning and has 
 Hindi audio ready before anyone opens the app.
 """
 import api
+import push
 import store
 import weather
 from common import now_iso
@@ -31,7 +32,11 @@ def check_tree(event, context):
         "ask": says["ask"], "litres": says["litres"], "textHi": says["textHi"], "textEn": says["textEn"],
         "spokenBy": says["spokenBy"], "heatDay": bool(says["heatwave"]), "at": now_iso(),
     })
-    return {"treeId": meta["id"], "ask": says["ask"], "litres": says["litres"], "adopted": bool(meta.get("adopter"))}
+    notified = 0
+    if says["ask"] == "water" and meta.get("adopter"):
+        notified = push.send(meta, f"{meta['name']} is thirsty", says["textHi"])
+    return {"treeId": meta["id"], "ask": says["ask"], "litres": says["litres"], "adopted": bool(meta.get("adopter")),
+            "notified": notified}
 
 
 def summarise(event, context):
@@ -42,6 +47,7 @@ def summarise(event, context):
         "askedForWater": sum(1 for r in results if r["ask"] == "water"),
         "toldToSkip": sum(1 for r in results if r["ask"] == "skip"),
         "litresAsked": round(sum(r["litres"] for r in results), 1),
+        "phonesNotified": sum(r.get("notified", 0) for r in results),
         "at": now_iso(),
     }
     store.put_item("MORNING", event["date"], out)

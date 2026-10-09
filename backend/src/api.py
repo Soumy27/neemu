@@ -10,6 +10,7 @@ import auth
 import drives
 import engine
 import proofs
+import push
 import speak
 import store
 import views
@@ -152,11 +153,15 @@ def remind(drive_id, query, body):
     drive = get_drive(drive_id, None, None)
     stamp = now_iso()
     reminded = 0
+    notified = 0
     for t in drive["trees"]:
         if t["status"] == status and t["adopter"]:
             store.update_tree(t["id"], lastRemindedAt=stamp)
             reminded += 1
-    return {"reminded": reminded, "at": stamp}
+            litres = speak._n(t["water"]["litresNeeded"])
+            notified += push.send(t, f"{t['name']} is thirsty",
+                                  f"{drive['organiser']} is reminding you: I need {litres} litres today.")
+    return {"reminded": reminded, "notified": notified, "at": stamp}
 
 
 # ---- router --------------------------------------------------------------
@@ -172,6 +177,8 @@ ROUTES = {
     "POST /trees/{id}/cover": drives.cover,
     "POST /covers/{id}/accept": drives.accept,
     "POST /covers/{id}/decline": drives.decline,
+    "POST /trees/{id}/subscribe": push.subscribe,
+    "GET /push/key": push.public_key,
     "GET /drives/{id}": get_drive,
     "POST /drives/{id}/remind": remind,
     "GET /drives/{id}/nearby": drives.nearby,

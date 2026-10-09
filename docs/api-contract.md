@@ -130,6 +130,14 @@ interface Cover { id: string; treeId: string; from: string; to: string; date: st
 - `GET /drives/{driveId}` → `{ id, name, organiser, asOf, replay, trees: Tree[], counts: Record<TreeStatus, number> }`. Takes `?date=` like `/today`. On this endpoint only, each tree also has `lastRemindedAt: string | null` and `lastProof: { at, photoUrl } | null` (a signed link good for an hour; fetch it fresh, do not store it).
 - `POST /drives/{driveId}/remind` body `{ status: "thirsty" | "no_proof" }` → `{ reminded: number, at: string }`. It stamps `lastRemindedAt` on each matching sapling that has an adopter. Nothing is sent to a phone yet.
 
+## Notifications (Web Push)
+
+- `GET /push/key` → `{ publicKey }`, the key the browser subscribes with.
+- `POST /trees/{id}/subscribe` body `{ subscription, handle }` → `{ subscribed: true, sent: number }`. `subscription` is `PushSubscription.toJSON()`. Only the sapling's adopter can subscribe it. `sent` is how many phones accepted the hello notification Neemu sends straight away.
+- The web app does both through `enablePush(treeId, handle)` in `web/src/api/push.ts`, which returns `"enabled" | "denied" | "unsupported" | "needs-install" | "failed"`. Call it from a tap.
+- A notification goes out when the 06:00 morning check finds the sapling needs water, and when the organiser presses remind. `remind` now also returns `notified`, the number of phones reached.
+- iPhone and iPad: the site must be added to the home screen first (`"needs-install"`).
+
 ## Sign-in
 
 - Reads are open. Writes are: adopt, proof-url, proof, cover, accept and decline a cover, remind, photo-url, register a sapling, review.
@@ -152,4 +160,4 @@ Not live yet, and what you get instead:
 | The agent (Bedrock) | `spokenBy: "template"`. Numbers, ask and steps are the same; only the sentence is fixed text. `talk` answers three kinds of question: tomorrow, why, and anything else gets today's line. |
 | AI look at the photo | `sameTree: null`, `basinWet: null`, `leaves: "unclear"`. |
 | Sign-in (Cognito) | Built and deployed, switched off (`REQUIRE_AUTH=off`). A request with no token is believed, as before. A request with a Cognito access token in `Authorization: Bearer` is checked with Cognito, and the caller's claimed name replaces `handle`, `by` and `addedBy`. When it is switched on, every write returns 401 with `source: "cognito"` unless signed in, and the web client then sends the person to the sign-in page (`web/src/api/auth.ts`). |
-| Reminders reaching a phone | Only `lastRemindedAt` is stamped. |
+| Reminders reaching a phone | Live for adopters who turned notifications on (see Notifications). Others only get `lastRemindedAt` stamped. |
