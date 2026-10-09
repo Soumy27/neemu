@@ -1,1 +1,2 @@
 # boto3 ships with the Lambda Python runtime.
+strands-agents==1.59.0
