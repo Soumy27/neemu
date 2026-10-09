@@ -105,3 +105,5 @@ a.button.primary { background: var(--green); color: #fff; border-color: var(--gr
 .signin { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 12px; }
 .icon { width: 1em; height: 1em; vertical-align: -0.12em; }
 .tree-loading { position: absolute; inset: 0; display: grid; place-items: center; background: #e9f3e1; color: #5f6b5a; font-size: 14px; z-index: 1; }
+.step strong { margin-right: 6px; }
+.step code.tool { background: none; color: var(--muted); font-size: 11px; margin-left: 4px; }

@@ -11,6 +11,15 @@ import { Drop, Flame } from "./icons";
 import { Tree3D } from "./Tree3D";
 import { listen, speak } from "./voice";
 
+// Plain words for the adopter; the tool name stays beside it, small, for anyone curious.
+const stepLabel: Record<string, string> = {
+  get_weather: "Weather",
+  get_forecast: "Forecast",
+  water_balance: "Soil water",
+  litres_needed: "Litres",
+  heat_check: "Heat",
+};
+
 const plantedLabel = (d: string) =>
   new Date(`${d}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
@@ -161,7 +170,7 @@ export function AdopterApp({ treeId }: { treeId: string }) {
             <ol className="steps">
               {thinking && <li className="step pending">{tree.name} is checking the weather…</li>}
               {says?.steps.slice(0, shownSteps).map((s, i) => (
-                <li key={i} className={`step ${s.ok ? "ok" : "bad"}`}><code>{s.tool}</code> {s.summary}</li>
+                <li key={i} className={`step ${s.ok ? "ok" : "bad"}`}><strong>{stepLabel[s.tool] ?? s.tool}</strong> {s.summary} <code className="tool">{s.tool}</code></li>
               ))}
             </ol>
           )}
