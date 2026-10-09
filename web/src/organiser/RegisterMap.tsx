@@ -98,12 +98,13 @@ export function RegisterMap({ trees, selectedId, onSelect }: {
     const map = mapRef.current;
     if (!ready || !map) return;
     (map.getSource("trees") as maplibregl.GeoJSONSource).setData(toGeoJson(trees));
-    if (!fitted.current && trees.length) {
-      const b = new maplibregl.LngLatBounds();
-      trees.forEach((t) => b.extend([t.location.lng, t.location.lat]));
-      map.fitBounds(b, { padding: 48, maxZoom: 18, animate: false });
-      fitted.current = true;
-    }
+    if (!trees.length) return;
+    // Frame whatever is listed, so the saplings fill the map on load and after a filter.
+    const b = new maplibregl.LngLatBounds();
+    trees.forEach((t) => b.extend([t.location.lng, t.location.lat]));
+    map.resize();
+    map.fitBounds(b, { padding: 48, maxZoom: 18, animate: fitted.current });
+    fitted.current = true;
   }, [ready, trees]);
 
   useEffect(() => {
