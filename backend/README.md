@@ -58,7 +58,7 @@ depletion is due to pass 9.8 mm by evening, and asks for `depletion x basin area
 | Heat day | max 40 °C or more | not an official heatwave |
 
 Status rules: `thirsty` = asked today, not yet watered. `no_proof` = three asks in a row
-unanswered. `likely_dead` = health at 5 or below for seven days in a row.
+unanswered. `likely_dead` = health at 5 or below for three days in a row.
 
 These are textbook figures, not measurements of any one tree. The model is approximate.
 

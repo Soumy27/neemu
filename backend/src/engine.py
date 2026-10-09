@@ -34,9 +34,9 @@ HEAT_DAY_C = 40.0          # IMD's plains threshold. A "heat day", not a declare
 
 START_HEALTH = 70.0
 HEALTH_GAIN = 3.0          # per day with no stress
-HEALTH_LOSS = 15.0         # per day at full stress, before the gain
+HEALTH_LOSS = 8.0          # per day at full stress, before the gain: about two weeks from healthy to nothing
 DEAD_HEALTH = 5.0
-DEAD_AFTER_DAYS = 7        # this many days in a row at or below DEAD_HEALTH
+DEAD_AFTER_DAYS = 3        # this many days in a row at or below DEAD_HEALTH
 NO_PROOF_AFTER_DAYS = 3    # asks in a row with no accepted proof
 
 
