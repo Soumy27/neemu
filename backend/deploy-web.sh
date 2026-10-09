@@ -9,8 +9,13 @@ STACK="neemu"
 APP_NAME="neemu"
 BRANCH="main"
 
-API_URL=$(aws cloudformation describe-stacks --stack-name "$STACK" --region "$REGION" \
-  --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
+output() {
+  aws cloudformation describe-stacks --stack-name "$STACK" --region "$REGION" \
+    --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
+}
+API_URL=$(output ApiUrl)
+SIGN_IN_DOMAIN=$(output SignInDomain)
+WEB_CLIENT_ID=$(output WebClientId)
 
 APP_ID=$(aws amplify list-apps --region "$REGION" --query "apps[?name=='$APP_NAME'].appId | [0]" --output text)
 if [ "$APP_ID" = "None" ] || [ -z "$APP_ID" ]; then
@@ -21,7 +26,8 @@ APP_URL="https://$BRANCH.$APP_ID.amplifyapp.com"
 
 cd "$ROOT/web"
 [ -d node_modules ] || npm ci
-VITE_API_URL="$API_URL" VITE_APP_URL="$APP_URL" npm run build
+VITE_API_URL="$API_URL" VITE_APP_URL="$APP_URL" \
+  VITE_COGNITO_DOMAIN="$SIGN_IN_DOMAIN" VITE_COGNITO_CLIENT_ID="$WEB_CLIENT_ID" npm run build
 
 ZIP="$(mktemp -d)/site.zip"
 (cd dist && zip -qr "$ZIP" .)

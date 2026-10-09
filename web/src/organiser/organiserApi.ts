@@ -1,6 +1,7 @@
 // Organiser-only calls: registering saplings and the same-tree review queue.
 // Paths as agreed with the backend on the relay (9 Oct): photo-url, drive reviews, and `by` until sign-in exists.
 
+import { authHeaders, signIn, signOut } from "../api/auth";
 import { api, SourceError, usingMock } from "../api/client";
 import type { ApiError, Drive, Tree, TreeStatus } from "../api/types";
 
@@ -37,11 +38,15 @@ export interface Register {
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     ...init,
-    headers: { "content-type": "application/json", ...init?.headers },
+    headers: { "content-type": "application/json", ...(await authHeaders()), ...init?.headers },
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
     const e = (body as ApiError | null)?.error;
+    if (res.status === 401 && e?.source === "cognito") {
+      signOut();
+      await signIn();
+    }
     throw new SourceError(e?.source ?? "api", e?.message ?? `HTTP ${res.status}`);
   }
   return body as T;

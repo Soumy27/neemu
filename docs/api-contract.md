@@ -130,9 +130,16 @@ interface Cover { id: string; treeId: string; from: string; to: string; date: st
 - `GET /drives/{driveId}` → `{ id, name, organiser, asOf, replay, trees: Tree[], counts: Record<TreeStatus, number> }`. Takes `?date=` like `/today`. On this endpoint only, each tree also has `lastRemindedAt: string | null` and `lastProof: { at, photoUrl } | null` (a signed link good for an hour; fetch it fresh, do not store it).
 - `POST /drives/{driveId}/remind` body `{ status: "thirsty" | "no_proof" }` → `{ reminded: number, at: string }`. It stamps `lastRemindedAt` on each matching sapling that has an adopter. Nothing is sent to a phone yet.
 
+## Sign-in
+
+- Reads are open. Writes are: adopt, proof-url, proof, cover, accept and decline a cover, remind, photo-url, register a sapling, review.
+- A signed-in person claims one name, the first time they adopt. One name per person, one person per name; the example adopters' names are reserved.
+- Organiser actions (`by: "organiser"` on a review, and `remind` once sign-in is required) need the Cognito group `organisers`.
+- Error codes: `sign_in` (401, no token), `sign_in_expired` (401), `organiser_only` (403), `no_name` (409, signed in but has not adopted yet), `name_taken` (409).
+
 ## Errors
 
-`{ error: { code, message, source } }` with `source` naming the failing dependency (`bedrock`, `open-meteo`, `s3`, or `api` for a bad request), so the UI can say which one failed. No silent fallbacks.
+`{ error: { code, message, source } }` with `source` naming the failing dependency (`bedrock`, `open-meteo`, `s3`, `cognito`, or `api` for a bad request), so the UI can say which one failed. No silent fallbacks.
 
 ## What is live
 
@@ -144,5 +151,5 @@ Not live yet, and what you get instead:
 |---|---|
 | The agent (Bedrock) | `spokenBy: "template"`. Numbers, ask and steps are the same; only the sentence is fixed text. `talk` answers three kinds of question: tomorrow, why, and anything else gets today's line. |
 | AI look at the photo | `sameTree: null`, `basinWet: null`, `leaves: "unclear"`. |
-| Sign-in (Cognito) | The API trusts `handle` and `by` in the request. |
+| Sign-in (Cognito) | Built and deployed, switched off (`REQUIRE_AUTH=off`). A request with no token is believed, as before. A request with a Cognito access token in `Authorization: Bearer` is checked with Cognito, and the caller's claimed name replaces `handle`, `by` and `addedBy`. When it is switched on, every write returns 401 with `source: "cognito"` unless signed in, and the web client then sends the person to the sign-in page (`web/src/api/auth.ts`). |
 | Reminders reaching a phone | Only `lastRemindedAt` is stamped. |

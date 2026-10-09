@@ -1,5 +1,6 @@
 // Talks to the real API when VITE_API_URL is set, otherwise to the mock.
 
+import { authHeaders, signIn, signOut } from "./auth";
 import * as mock from "./mock";
 import type { ApiError, Buddy, Cover, Drive, NeemuSays, ProofResult, Review, Tree, TreeStatus } from "./types";
 
@@ -23,11 +24,16 @@ export class SourceError extends Error {
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     ...init,
-    headers: { "content-type": "application/json", ...init?.headers },
+    headers: { "content-type": "application/json", ...(await authHeaders()), ...init?.headers },
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
     const e = (body as ApiError | null)?.error;
+    // The API wants a sign-in for this (or the old one expired): go to Cognito and come back here.
+    if (res.status === 401 && e?.source === "cognito") {
+      signOut();
+      await signIn();
+    }
     throw new SourceError(e?.source ?? "api", e?.message ?? `HTTP ${res.status}`);
   }
   return body as T;

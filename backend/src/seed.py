@@ -81,6 +81,8 @@ def run() -> dict:
             added += 1
             if t["adopter"]:
                 store.put_item(f"ADOPTER#{t['adopter']['handle']}", t["id"], {"driveId": DRIVE_ID})
+    for h in ADOPTERS:                 # example adopters' names cannot be claimed by a real person
+        store.put_item(f"HANDLE#{h}", "META", {"sub": "example"}, only_if_new=True)
     store.put_item(f"DRIVE#{DRIVE_ID}", "META", {
         "id": DRIVE_ID,
         "name": "DTU Eco Club drive, Aug 2026",
