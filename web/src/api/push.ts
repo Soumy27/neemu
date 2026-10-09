@@ -16,8 +16,12 @@ const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
 const installed = () =>
   window.matchMedia("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true;
 
+const canPush = () => !!API && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+
+// Whether to offer the button at all. True on an iPhone browser too: push only exists there once
+// the app is on the home screen, and enablePush() then answers "needs-install" so the page can say so.
 export function pushSupported(): boolean {
-  return !!API && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  return canPush() || (!!API && isIos() && !installed());
 }
 
 function keyBytes(base64url: string): Uint8Array<ArrayBuffer> {
@@ -30,7 +34,7 @@ function keyBytes(base64url: string): Uint8Array<ArrayBuffer> {
 
 export async function enablePush(treeId: string, handle: string): Promise<PushResult> {
   if (isIos() && !installed()) return "needs-install";
-  if (!pushSupported()) return "unsupported";
+  if (!canPush()) return "unsupported";
   try {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return "denied";
