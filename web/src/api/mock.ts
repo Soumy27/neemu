@@ -19,6 +19,7 @@ const tree: Tree = {
   health: 58,
   growthStage: 2,
   streakDays: 0,
+  litresSaved: 6,
   water: {
     soilWaterMm: 6.1,
     deficitMm: 4.2,
@@ -31,6 +32,26 @@ const tree: Tree = {
 };
 
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
+
+// ?demo=heatwave or ?demo=rain replays a real past day (Open-Meteo archive, same spot).
+export type Scenario = "today" | "heatwave" | "rain";
+export const scenario: Scenario = (() => {
+  const d = new URLSearchParams(location.search).get("demo");
+  return d === "heatwave" || d === "rain" ? d : "today";
+})();
+export const scenarioLabel: Record<Scenario, string> = {
+  today: "Demo data: weather numbers are real (Open-Meteo, Delhi, 9 Oct); the tree and its owner are examples.",
+  heatwave: "Replay of a real day: 19 May 2026, Delhi, 44.0 °C (Open-Meteo archive). The tree and its owner are examples.",
+  rain: "Replay of a real day: 3 Aug 2026, Delhi, 33.3 mm of rain (Open-Meteo archive). The tree and its owner are examples.",
+};
+if (scenario === "heatwave") {
+  Object.assign(tree, { status: "thirsty", health: 41, plantedOn: "2025-08-14" });
+  tree.water = { soilWaterMm: 2.1, deficitMm: 9.4, litresNeeded: 5, lastWateredAt: "2026-05-18T13:00:00Z", rainLast48hMm: 0, et0TodayMm: 9.38, tMaxTodayC: 44.0 };
+}
+if (scenario === "rain") {
+  Object.assign(tree, { status: "fine", health: 82, plantedOn: "2025-08-14" });
+  tree.water = { soilWaterMm: 24, deficitMm: 0, litresNeeded: 0, lastWateredAt: "2026-08-01T12:00:00Z", rainLast48hMm: 33.3, et0TodayMm: 3.81, tMaxTodayC: 33.5 };
+}
 
 export async function getTree(id: string): Promise<Tree> {
   await wait(300);
@@ -57,9 +78,22 @@ function says(): NeemuSays {
     { tool: "water_balance", summary: `${w.soilWaterMm} mm left, ${w.deficitMm} mm short`, ok: true },
     { tool: "litres_needed", summary: `${w.deficitMm} mm × ${tree.basinM2} m² ≈ ${w.litresNeeded} L`, ok: true },
   ];
+  if (scenario === "heatwave") {
+    return {
+      ask: "water",
+      heatwave: { active: true, tMaxC: 44.0, date: "2026-05-19" },
+      litres: w.litresNeeded,
+      textHi: `आज 44 डिग्री है! मेरी मिट्टी आज 9 मिलीमीटर पानी खो देगी। आज बॉस डे है: शाम 6 बजे से पहले ${w.litresNeeded} लीटर पानी चाहिए, वरना मेरी पत्तियाँ झड़ने लगेंगी।`,
+      textEn: `It's 44 degrees! My soil will lose 9 mm of water today. It's a boss day: I need ${w.litresNeeded} litres before 6 PM or my leaves start to drop.`,
+      audioUrl: null,
+      facts,
+      steps: [...steps, { tool: "heat_check", summary: "Forecast max 44.0 °C ≥ 40 °C threshold: heatwave day", ok: true }],
+    };
+  }
   if (w.litresNeeded > 0) {
     return {
       ask: "water",
+      heatwave: null,
       litres: w.litresNeeded,
       textHi: `नमस्ते, मैं नीमू हूँ, गेट 3 वाला। चार दिन से किसी ने पानी नहीं दिया, और मेरी मिट्टी सूख रही है। आज शाम ${w.litresNeeded} लीटर पानी दोगे?`,
       textEn: `Hi, I'm ${tree.name} from Gate 3. Nobody has watered me for four days and my soil is drying. Could you give me ${w.litresNeeded} litres this evening?`,
@@ -70,9 +104,10 @@ function says(): NeemuSays {
   }
   return {
     ask: "skip",
+    heatwave: null,
     litres: 0,
-    textHi: `आज मैं ठीक हूँ, मिट्टी में पानी है। आज मत आना, पानी बचाओ!`,
-    textEn: `I'm fine today, my soil still has water. Don't come today, save the water!`,
+    textHi: `पिछले दो दिन में ${w.rainLast48hMm} मिलीमीटर बारिश हुई, मेरी मिट्टी भरी हुई है। आज मत आना, पानी बचाओ! तुम्हारी स्ट्रीक नहीं टूटेगी।`,
+    textEn: `${w.rainLast48hMm} mm of rain in the last two days, my soil is full. Don't come today, save the water! Your streak stays safe.`,
     audioUrl: null,
     facts,
     steps,
@@ -81,7 +116,12 @@ function says(): NeemuSays {
 
 export async function today(_id: string): Promise<NeemuSays> {
   await wait(900);
-  return says();
+  const s = says();
+  if (s.ask === "skip") {
+    tree.litresSaved += 2;
+    tree.streakDays += 1;
+  }
+  return s;
 }
 
 export async function talk(_id: string, text: string): Promise<NeemuSays> {

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, SourceError, usingMock } from "../api/client";
+import { scenarioLabel, scenario } from "../api/mock";
+import { shareCard } from "./shareCard";
 import type { NeemuSays, ProofResult, Tree } from "../api/types";
 import { Tree3D } from "./Tree3D";
 import { listen, speak } from "./voice";
@@ -51,6 +53,7 @@ export function AdopterApp({ treeId }: { treeId: string }) {
     setShowWhy(false);
     try {
       setSays(await p);
+      setTree(await api.getTree(treeId));
     } catch (e) {
       setError(errorText(e));
     } finally {
@@ -107,7 +110,13 @@ export function AdopterApp({ treeId }: { treeId: string }) {
 
   return (
     <div className="adopter">
-      {usingMock && <div className="banner">Demo data: weather numbers are real (Open-Meteo, Delhi, 9 Oct); the tree and its owner are examples.</div>}
+      {usingMock && <div className="banner">{scenarioLabel[scenario]}</div>}
+      {says?.heatwave?.active && (
+        <div className="boss" role="status">
+          <strong>🔥 Heatwave boss day · {says.heatwave.tMaxC} °C</strong>
+          <span>Every tree in the drive needs water before 6 PM. Beat the heat, keep your streak.</span>
+        </div>
+      )}
 
       <section className="stage">
         <Tree3D seed={tree.id} stage={tree.growthStage} health={tree.health} wetness={wetness} watering={watering} />
@@ -120,7 +129,10 @@ export function AdopterApp({ treeId }: { treeId: string }) {
             <h1>{tree.name}</h1>
             <p className="muted">{tree.species} · planted {tree.plantedOn} · {tree.location.label}</p>
           </div>
-          <div className="streak" title="Days in a row">🔥 {tree.streakDays}</div>
+          <div className="stats">
+            <div className="streak" title="Days in a row">🔥 {tree.streakDays}</div>
+            <div className="saved" title="Litres Neemu told you not to give, because rain covered it">💧 {tree.litresSaved} L saved</div>
+          </div>
         </div>
         <div className="meter" aria-label={`Health ${tree.health} of 100`}>
           <div className="meter-fill" style={{ width: `${tree.health}%` }} />
@@ -158,6 +170,7 @@ export function AdopterApp({ treeId }: { treeId: string }) {
                 <div className="row wrap">
                   <button onClick={() => setVoiceVia(speak(says.textHi, says.audioUrl).via)}>▶ Hear {tree.name}</button>
                   <button onClick={() => setShowWhy((v) => !v)}>{showWhy ? "Hide" : "Why?"}</button>
+                  <button onClick={() => shareCard(tree, says)}>Share</button>
                   {voiceVia === "browser" && <span className="muted small">Browser voice stands in for Amazon Polly in demo mode.</span>}
                 </div>
                 {showWhy && (

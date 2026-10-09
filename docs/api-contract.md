@@ -22,6 +22,7 @@ interface Tree {
   health: number;             // 0 to 100
   growthStage: 1 | 2 | 3 | 4 | 5;
   streakDays: number;         // consecutive days with an accepted proof or a justified skip
+  litresSaved: number;        // total litres Neemu told the adopter NOT to give because rain or soil covered it
   water: {
     soilWaterMm: number;      // modelled water left in the root zone
     deficitMm: number;        // how far below comfortable
@@ -44,6 +45,7 @@ interface ToolStep { tool: string; summary: string; ok: boolean } // shown live 
 
 interface NeemuSays {
   ask: "water" | "skip" | "none";
+  heatwave: { active: boolean; tMaxC: number; date: string } | null; // "boss day": forecast max at or above the heat threshold (proposal: 40 °C)
   litres: number;             // 0 when ask is not "water"
   textHi: string;             // Hindi, what Neemu says
   textEn: string;             // English subtitle

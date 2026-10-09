@@ -15,6 +15,7 @@ export interface Tree {
   health: number;
   growthStage: 1 | 2 | 3 | 4 | 5;
   streakDays: number;
+  litresSaved: number;
   water: {
     soilWaterMm: number;
     deficitMm: number;
@@ -34,6 +35,7 @@ export interface ToolStep {
 
 export interface NeemuSays {
   ask: "water" | "skip" | "none";
+  heatwave: { active: boolean; tMaxC: number; date: string } | null;
   litres: number;
   textHi: string;
   textEn: string;

@@ -82,3 +82,9 @@ blockquote { margin: 8px 0 4px; font-size: 19px; line-height: 1.55; font-weight:
 .result.rejected { background: var(--red-soft); }
 .result p, .result ul { margin: 0; }
 .error { margin: 12px 0; padding: 10px 12px; border-radius: 10px; background: var(--red-soft); color: var(--red); }
+
+.boss { margin: 12px 0; padding: 12px 14px; border-radius: 12px; background: var(--red-soft); color: var(--red); display: grid; gap: 4px; animation: pulse 1.6s ease-in-out infinite; }
+.boss span { color: var(--ink); font-size: 14px; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 4px var(--red-soft); } }
+.stats { text-align: right; }
+.saved { font-size: 13px; color: var(--muted); margin-top: 2px; white-space: nowrap; }
