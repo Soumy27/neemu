@@ -54,9 +54,11 @@ To use the live API, put `VITE_API_URL=https://uzrl7xynp7.execute-api.us-west-2.
 
 ## Credits
 
+**Design:** the Living Grove look was drafted with Google Stitch and built by hand. Fonts: Outfit, Plus Jakarta Sans, Noto Sans Devanagari; icons: Material Symbols (all OFL or Apache-2.0, via Google Fonts).
+
 **Data:** weather from [Open-Meteo](https://open-meteo.com/) (CC BY 4.0). Map tiles © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL). Water balance after Allen et al., 1998, *FAO Irrigation and Drainage Paper 56*.
 
-**Libraries:** React, three.js, @react-three/fiber, @react-three/drei, qrcode (MIT); MapLibre GL JS (BSD-3-Clause); Strands Agents SDK (Apache-2.0); pywebpush (MPL-2.0).
+**Libraries:** React, three.js, @react-three/fiber, @react-three/drei, qrcode, [ez-tree](https://github.com/dgreenheck/ez-tree) by Daniel Greenheck for the procedural 3D trees (MIT); MapLibre GL JS (BSD-3-Clause); Strands Agents SDK (Apache-2.0); pywebpush (MPL-2.0).
 
 **AI coding tools:** Claude Code, used by all three of us.
 
