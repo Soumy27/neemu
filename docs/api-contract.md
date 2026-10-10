@@ -95,7 +95,7 @@ interface ProofResult {
 - **Same tree is checked by people.** A share of proofs (proposal: 1 in 5 at random, every first proof, and soft fails such as accuracy 30 to 50 m) get `review: "pending"` and go to a review queue. A reviewer sees the proof beside the reference photo and votes same / unsure / different. Reviewers: the organiser, or a water buddy (adopter of a nearby tree, never the proof's own adopter). Two "different" votes, or one from the organiser, undo the credit.
 - Photos come from the in-app camera only, not the gallery.
 - `lastWateredAt` and `streakDays` move only on an accepted proof or a code-justified skip.
-- Status thresholds, fixed in `backend/src/engine.py`: `thirsty` = Neemu asked today and has not been watered; `no_proof` = three asks in a row unanswered; `likely_dead` = health at 5 or below for three days in a row; otherwise `fine`.
+- Status thresholds, fixed in `backend/src/engine.py`: `thirsty` = Neemu asked today and has not been watered; `no_proof` = three asks in a row unanswered; `likely_dead` = health has fallen to 5 or below (about two to three weeks of unanswered asks); otherwise `fine`.
 - The ask: Neemu asks when the root zone is due to be 9.8 mm or more short of full by evening, and asks for that depth times the basin area, rounded up to half a litre. On this week's Delhi weather that is 5 to 9 L about every four days; in a May heat spell, 10 to 14 L daily.
 
 ## Finding and registering trees
