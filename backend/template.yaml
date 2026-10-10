@@ -132,7 +132,9 @@ Resources:
                 - !Sub arn:aws:bedrock:*:${AWS::AccountId}:inference-profile/*amazon.nova-*
             - Effect: Allow
               Action: ssm:GetParameter
-              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/neemu/vapid-*
+              Resource:
+                - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/neemu/vapid-*
+                - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/neemu/agent-*
       Events:
         GetTree: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: GET, Path: "/trees/{id}" } }
         Adopt: { Type: HttpApi, Properties: { ApiId: !Ref Api, Method: POST, Path: "/trees/{id}/adopt" } }
@@ -181,7 +183,9 @@ Resources:
                 - !Sub arn:aws:bedrock:*:${AWS::AccountId}:inference-profile/*amazon.nova-*
             - Effect: Allow
               Action: ssm:GetParameter
-              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/neemu/vapid-*
+              Resource:
+                - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/neemu/vapid-*
+                - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/neemu/agent-*
 
   SummariseFunction:
     Type: AWS::Serverless::Function

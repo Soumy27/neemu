@@ -6,7 +6,14 @@ the engine. Before a reply is used, every number in it is checked against what t
 tools returned. If a number is not there, the reply is thrown away and the fixed
 sentence is used instead.
 
-If Bedrock cannot be reached, AgentUnavailable is raised and the caller falls back to
+Models, in order:
+  1. Amazon Bedrock (Nova 2 Lite).
+  2. A fall-back provider, used only when Bedrock refuses the call and a key for it
+     has been put in SSM Parameter Store (/neemu/agent-fallback-key). Same agent,
+     same tools, same number check; only the model behind it differs.
+The response says which model spoke (spokenWith).
+
+If no model can be reached, AgentUnavailable is raised and the caller falls back to
 the template, marking the response spokenBy: "template".
 """
 import json
@@ -18,9 +25,11 @@ import engine
 import speak
 
 MODEL_ID = os.environ.get("AGENT_MODEL", "us.amazon.nova-2-lite-v1:0")
+FALLBACK_MODEL_ID = os.environ.get("AGENT_FALLBACK_MODEL", "gemini-2.5-flash")
 RETRY_AFTER_SECONDS = 300
 
-_down_until = 0.0
+_down_until = {"bedrock": 0.0, "fallback": 0.0}
+_fallback_key: dict = {}
 
 SYSTEM = """You are {name}, a young {species} sapling at {place}. You are talking to the person who adopted you.
 
@@ -92,16 +101,11 @@ def parse_reply(text: str) -> dict:
     return {"hi": hi, "en": en}
 
 
-def run(meta: dict, states: list, ahead: list, question: str | None = None) -> tuple[str, str, list[dict]]:
-    """Return (Hindi, English, tool steps). Raises AgentUnavailable or NotGrounded."""
-    global _down_until
-    if time.time() < _down_until:
-        raise AgentUnavailable("Bedrock was unavailable a moment ago")
-
+def run(meta: dict, states: list, ahead: list, question: str | None = None) -> tuple[str, str, list[dict], str]:
+    """Return (Hindi, English, tool steps, model label). Raises AgentUnavailable or NotGrounded."""
     try:
         from botocore.exceptions import BotoCoreError, ClientError
         from strands import Agent, tool
-        from strands.models import BedrockModel
     except ImportError as e:
         raise AgentUnavailable(f"Strands is not installed: {e}")
 
@@ -161,23 +165,74 @@ def run(meta: dict, states: list, ahead: list, question: str | None = None) -> t
 
     place = meta["location"].get("spot") or meta["location"]["label"]
     prompt = question or "It is morning. Do your check and tell me what you need today."
-    try:
-        model = BedrockModel(model_id=MODEL_ID, temperature=0.4, max_tokens=400)
-        neemu = Agent(model=model, tools=[get_weather, water_balance, get_forecast, last_watering],
-                      system_prompt=SYSTEM.format(name=meta["name"], species=meta["species"], place=place),
-                      callback_handler=None)
-        result = neemu(prompt)
-    except (ClientError, BotoCoreError) as e:
-        _down_until = time.time() + RETRY_AFTER_SECONDS
-        raise AgentUnavailable(str(e))
-    except Exception as e:            # Strands wraps provider errors in its own types
-        if any(k in str(e) for k in ("Operation not allowed", "AccessDenied", "Throttling", "Too many tokens", "ValidationException")):
-            _down_until = time.time() + RETRY_AFTER_SECONDS
-            raise AgentUnavailable(str(e))
-        raise NotGrounded(f"agent run failed: {type(e).__name__}")
+    system = SYSTEM.format(name=meta["name"], species=meta["species"], place=place)
+    tools = [get_weather, water_balance, get_forecast, last_watering]
 
-    if not any(st["tool"] == "water_balance" for st in steps) and not question:
-        raise NotGrounded("spoke about water without calling water_balance")
-    reply = parse_reply(str(result))
-    check_grounded(reply, results, meta)
-    return reply["hi"], reply["en"], steps
+    last_error = "no model is configured"
+    for provider in ("bedrock", "fallback"):
+        if time.time() < _down_until[provider]:
+            last_error = f"{provider} was unavailable a moment ago"
+            continue
+        try:
+            model, label = _model(provider)
+        except AgentUnavailable as e:
+            last_error = str(e)
+            continue
+        del steps[:], results[:]
+        try:
+            result = Agent(model=model, tools=tools, system_prompt=system, callback_handler=None)(prompt)
+        except (ClientError, BotoCoreError) as e:
+            _down_until[provider] = time.time() + RETRY_AFTER_SECONDS
+            last_error = f"{provider}: {e}"
+            continue
+        except Exception as e:            # Strands wraps provider errors in its own types
+            if any(k in str(e) for k in _OUTAGE_WORDS):
+                _down_until[provider] = time.time() + RETRY_AFTER_SECONDS
+                last_error = f"{provider}: {str(e)[:160]}"
+                continue
+            raise NotGrounded(f"agent run failed on {provider}: {type(e).__name__}: {str(e)[:120]}")
+
+        if not any(st["tool"] == "water_balance" for st in steps) and not question:
+            raise NotGrounded("spoke about water without calling water_balance")
+        reply = parse_reply(str(result))
+        check_grounded(reply, results, meta)
+        return reply["hi"], reply["en"], list(steps), label
+
+    raise AgentUnavailable(last_error)
+
+
+_OUTAGE_WORDS = ("Operation not allowed", "AccessDenied", "Throttling", "Too many tokens", "ValidationException",
+                 "API key", "PERMISSION_DENIED", "RESOURCE_EXHAUSTED", "UNAUTHENTICATED", "quota", "429", "503")
+
+
+def _model(provider: str):
+    """-> (Strands model, label shown to the user). Raises AgentUnavailable if it cannot be built."""
+    if provider == "bedrock":
+        from strands.models import BedrockModel
+        return BedrockModel(model_id=MODEL_ID, temperature=0.4, max_tokens=400), f"Amazon Bedrock · {MODEL_ID.split('.', 1)[-1]}"
+
+    key = _fallback_api_key()
+    if not key:
+        raise AgentUnavailable("no fall-back key in Parameter Store")
+    try:
+        from strands.models.gemini import GeminiModel
+    except ImportError as e:
+        raise AgentUnavailable(f"fall-back provider not installed: {e}")
+    model = GeminiModel(client_args={"api_key": key}, model_id=FALLBACK_MODEL_ID,
+                        params={"temperature": 0.4, "max_output_tokens": 600})
+    return model, f"Google Gemini · {FALLBACK_MODEL_ID} (Bedrock not enabled on this account)"
+
+
+def _fallback_api_key() -> str | None:
+    """Read the fall-back key from Parameter Store, at most once every five minutes. Never logged."""
+    now = time.time()
+    if now - _fallback_key.get("at", 0) < RETRY_AFTER_SECONDS:
+        return _fallback_key.get("value")
+    value = None
+    try:
+        import aws
+        value = aws.client("ssm").get_parameter(Name="/neemu/agent-fallback-key", WithDecryption=True)["Parameter"]["Value"].strip() or None
+    except Exception:
+        value = None
+    _fallback_key.update(at=now, value=value)
+    return value

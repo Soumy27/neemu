@@ -47,7 +47,8 @@ interface ToolStep { tool: string; summary: string; ok: boolean } // shown live 
 interface NeemuSays {
   ask: "water" | "skip" | "none";
   heatwave: { active: boolean; tMaxC: number; date: string } | null; // "heat day": forecast max >= 40 °C. Not an official IMD heatwave; label it "heat day"
-  spokenBy: "agent" | "template"; // template when Bedrock cannot run; ask, litres, facts, heatwave come from code either way
+  spokenBy: "agent" | "template"; // template when no model can run; ask, litres, facts, heatwave come from code either way
+  spokenWith: string | null;  // which model wrote the sentence, e.g. "Amazon Bedrock · amazon.nova-2-lite-v1:0"; null for a template
   asOf: string;               // the date the numbers are for
   replay: boolean;            // true when ?date= asked for a past day; the UI must say so
   litres: number;             // 0 when ask is not "water"
@@ -157,7 +158,7 @@ Not live yet, and what you get instead:
 
 | Thing | Until it lands |
 |---|---|
-| The agent (Bedrock) | `spokenBy: "template"`. Numbers, ask and steps are the same; only the sentence is fixed text. `talk` answers three kinds of question: tomorrow, why, and anything else gets today's line. |
+| The agent | Bedrock still refuses calls on this account. The agent now has a second model provider it uses when Bedrock refuses, if a key for it is in Parameter Store; none is there yet. Until one of the two works: `spokenBy: "template"`. Numbers, ask and steps are the same; only the sentence is fixed text. `talk` answers three kinds of question: tomorrow, why, and anything else gets today's line. |
 | AI look at the photo | `sameTree: null`, `basinWet: null`, `leaves: "unclear"`. |
 | Sign-in (Cognito) | Built and deployed, switched off (`REQUIRE_AUTH=off`). A request with no token is believed, as before. A request with a Cognito access token in `Authorization: Bearer` is checked with Cognito, and the caller's claimed name replaces `handle`, `by` and `addedBy`. When it is switched on, every write returns 401 with `source: "cognito"` unless signed in, and the web client then sends the person to the sign-in page (`web/src/api/auth.ts`). |
 | Reminders reaching a phone | Live for adopters who turned notifications on (see Notifications). Others only get `lastRemindedAt` stamped. |
