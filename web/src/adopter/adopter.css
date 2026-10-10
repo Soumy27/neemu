@@ -99,7 +99,7 @@ button.listen.playing::after { content: ""; position: absolute; inset: -7px; bor
 .vital-num small { font-size: 1.3rem; color: var(--ink-3); font-weight: 500; }
 .vital-num.small-num { font-size: 1.8rem; padding-top: 10px; }
 .vine { height: 3px; background: var(--hair); border-radius: 2px; margin-top: 12px; position: relative; }
-.vine-fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--emerald), var(--gold)); border-radius: 2px; transition: width 1s var(--ease-out); }
+.vine-fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--emerald), var(--gold)); border-radius: 2px; }
 .vine-fill::after { content: ""; position: absolute; right: -5px; top: -4px; width: 11px; height: 11px; transform: rotate(45deg); background: var(--gold); }
 @media (max-width: 860px) {
   .vitals { grid-template-columns: 1fr 1fr; row-gap: 22px; }

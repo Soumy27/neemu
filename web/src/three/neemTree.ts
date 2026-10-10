@@ -75,3 +75,5 @@ export function mistColour(weather: "clear" | "hot" | "rain" = "clear") {
   if (dark) return weather === "hot" ? "#5e5233" : weather === "rain" ? "#3f5452" : "#3d5a4c";
   return weather === "hot" ? "#f3e6cf" : weather === "rain" ? "#d3e0e0" : "#dceee3";
 }
+
+export const prefersDark = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-color-scheme: dark)").matches;

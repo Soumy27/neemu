@@ -93,3 +93,45 @@
   .tags { max-width: none; padding: 0; }
   .poster { border: 0; max-width: none; }
 }
+
+/* ---------- Charbagh look for the organiser screens (soumy-claude, 11 Oct) ---------- */
+.organiser .org-head h1 { font-size: 2.8rem; font-weight: 500; }
+.organiser .org-head { padding-bottom: 18px; border-bottom: 1px solid var(--hair); margin-bottom: 26px; }
+
+/* counts: open columns with serif figures, divided by hairlines */
+.organiser .tiles { gap: 0; margin-bottom: 30px; }
+.organiser .tile { background: none; border-radius: 0; padding: 4px 24px; color: var(--ink); }
+.organiser .tile:first-child { padding-left: 0; }
+.organiser .tile + .tile { border-left: 1px solid var(--hair); }
+.organiser .tile:hover { background: none; }
+.organiser .tile[aria-pressed="true"] { box-shadow: none; }
+.organiser .tile[aria-pressed="true"] .tile-count { color: var(--emerald); text-decoration: underline; text-decoration-color: var(--gold); text-underline-offset: 8px; text-decoration-thickness: 2px; }
+.organiser .tile-count { order: 2; font-family: var(--font-display); font-size: 3.2rem; font-weight: 600; line-height: 1.05; }
+.organiser .tile-label { order: 1; font-family: var(--font-ui); font-weight: 500; font-size: 0.92rem; }
+.organiser .tile .muted { order: 3; }
+.organiser .dot { width: 8px; height: 8px; border-radius: 0; transform: rotate(45deg); }
+.organiser .dot-fine { background: var(--emerald); }
+.organiser .dot-thirsty, .organiser .dot-no_proof { background: var(--saffron); }
+.organiser .dot-likely_dead { background: var(--terracotta); }
+@media (max-width: 860px) { .organiser .tile:nth-child(3) { padding-left: 0; border-left: 0; } .organiser .tiles { row-gap: 18px; } }
+
+/* the one action is the emerald panel */
+.organiser .card.remind { background: var(--emerald-deep); color: var(--on-emerald); border: 0; border-radius: 20px; padding: 26px; position: relative; overflow: hidden; }
+.organiser .card.remind::after { content: ""; position: absolute; inset: 0; opacity: 0.14; pointer-events: none; background-image: var(--jali-light); background-size: 56px 56px; }
+.organiser .card.remind > * { position: relative; z-index: 1; }
+.organiser .card.remind h2 { color: var(--on-emerald); font-size: 1.8rem; }
+.organiser .card.remind .muted, .organiser .card.remind p { color: oklch(0.9 0.02 120); }
+.organiser .card.remind button.primary { background: var(--gold); border-color: var(--gold); color: oklch(0.25 0.05 165); }
+
+/* everything else: open sections, not boxes */
+.organiser .card:not(.remind):not(.picked) { background: none; border: 0; border-top: 1px solid var(--hair); border-radius: 0; padding: 26px 0 0; margin-top: 26px; }
+.organiser .card h2 { font-size: 1.7rem; font-weight: 500; }
+.organiser .register-map { border: 1px solid var(--gold); border-radius: 20px; }
+.organiser .register th { font-family: var(--font-ui); font-weight: 500; color: var(--ink-3); }
+.organiser .register tbody tr:hover, .organiser .register tr.is-selected { background: var(--emerald-wash); }
+.organiser .card.picked { border: 1px solid var(--gold); border-radius: 16px; background: var(--bg); }
+.organiser .pill-fine, .organiser .pill-thirsty, .organiser .pill-no_proof, .organiser .pill-likely_dead { background: none; padding: 0; border-radius: 0; font-weight: 500; }
+.organiser .pill-fine { color: var(--emerald); }
+.organiser .pill-thirsty, .organiser .pill-no_proof { color: var(--saffron); }
+.organiser .pill-likely_dead { color: var(--terracotta); }
+.organiser .review { background: none; border: 1px solid var(--hair); }

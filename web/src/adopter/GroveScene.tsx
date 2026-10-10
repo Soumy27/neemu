@@ -7,7 +7,7 @@ import { ContactShadows, Html, OrbitControls } from "@react-three/drei";
 import { useMemo, useState } from "react";
 import * as THREE from "three";
 import type { Tree } from "../api/types";
-import { buildTree, heightFor, mistColour } from "../three/neemTree";
+import { buildTree, heightFor, mistColour, prefersDark } from "../three/neemTree";
 
 const statusRing: Record<Tree["status"], string> = { fine: "#2f8a5b", thirsty: "#d99a2b", no_proof: "#c27a1f", likely_dead: "#b0503a" };
 
@@ -96,11 +96,11 @@ export function GroveScene({ trees, future, selected, onPick }: { trees: Tree[];
   return (
     <Canvas shadows gl={{ alpha: true }} camera={{ position: [span * 0.55, span * 0.32, span * 1.15], fov: 42 }} dpr={[1, 1.75]}>
       <fog attach="fog" args={[mistColour(), span * 1.6, span * 3.2]} />
-      <hemisphereLight args={["#fff8e7", "#6d8a4f", 1]} />
-      <directionalLight position={[30, 40, 20]} intensity={1.8} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} />
+      <hemisphereLight args={[prefersDark() ? "#9fb4d6" : "#fff8e7", prefersDark() ? "#2e3f2a" : "#6d8a4f", prefersDark() ? 0.55 : 1]} />
+      <directionalLight position={prefersDark() ? [30, 14, 20] : [30, 40, 20]} color={prefersDark() ? "#ffcf8a" : "#ffffff"} intensity={prefersDark() ? 1.3 : 1.8} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow onClick={() => onPick("")}>
         <circleGeometry args={[span * 4, 64]} />
-        <meshStandardMaterial color="#9dbf7e" roughness={1} />
+        <meshStandardMaterial color={prefersDark() ? "#4f6b3e" : "#9dbf7e"} roughness={1} />
       </mesh>
       <Grove placed={placed} selected={selected} onPick={onPick} />
       <ContactShadows position={[0, 0.03, 0]} opacity={0.35} scale={span * 3} blur={2} far={6} />

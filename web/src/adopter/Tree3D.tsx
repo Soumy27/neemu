@@ -6,7 +6,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, OrbitControls } from "@react-three/drei";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { buildTree, heightFor, mistColour } from "../three/neemTree";
+import { buildTree, heightFor, mistColour, prefersDark } from "../three/neemTree";
 
 export type Weather = "clear" | "hot" | "rain";
 
@@ -40,13 +40,13 @@ function Rain({ height }: { height: number }) {
   );
 }
 
-function Ground({ wetness }: { wetness: number }) {
-  const soil = new THREE.Color("#d2b48a").lerp(new THREE.Color("#5a3e26"), wetness);
+function Ground({ wetness, dusk }: { wetness: number; dusk: boolean }) {
+  const soil = new THREE.Color(dusk ? "#8a7356" : "#d2b48a").lerp(new THREE.Color("#4a3320"), wetness);
   return (
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[6, 64]} />
-        <meshStandardMaterial color="#9fbf72" roughness={1} />
+        <meshStandardMaterial color={dusk ? "#4f6b3e" : "#9fbf72"} roughness={1} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} receiveShadow>
         <circleGeometry args={[0.6, 48]} />
@@ -74,6 +74,7 @@ function Ground({ wetness }: { wetness: number }) {
 
 export function Tree3D({ seed, stage, health, wetness, watering, weather = "clear" }: { seed: string; stage: number; health: number; wetness: number; watering: boolean; weather?: Weather }) {
   const [ready, setReady] = useState(false);
+  const dusk = prefersDark();
   const h = heightFor(stage);
   const sun: [number, number, number] = weather === "hot" ? [3, 6, 2] : weather === "rain" ? [2, 2, -4] : [4, 4, 3];
   return (
@@ -87,10 +88,11 @@ export function Tree3D({ seed, stage, health, wetness, watering, weather = "clea
       <Canvas onCreated={() => setReady(true)} shadows gl={{ alpha: true }} camera={{ position: [h * 1.3, h * 0.75, h * 1.6], fov: 38 }} dpr={[1, 2]}>
         {/* the sky is the CSS gradient behind a transparent canvas; mist hides the ground's edge */}
         <fog attach="fog" args={[mistColour(weather), h * 2.2, h * 5]} />
-        <hemisphereLight args={["#fff8e7", "#6d8a4f", weather === "rain" ? 0.7 : 1]} />
-        <directionalLight position={sun} intensity={weather === "hot" ? 2.4 : weather === "rain" ? 0.8 : 1.8} castShadow shadow-mapSize={[2048, 2048]} />
+        {/* by night the garden is lit low and warm, like the last of the evening */}
+        <hemisphereLight args={[dusk ? "#9fb4d6" : "#fff8e7", dusk ? "#2e3f2a" : "#6d8a4f", dusk ? 0.55 : weather === "rain" ? 0.7 : 1]} />
+        <directionalLight position={dusk ? [4, 2.2, 3] : sun} color={dusk ? "#ffcf8a" : "#ffffff"} intensity={dusk ? 1.3 : weather === "hot" ? 2.4 : weather === "rain" ? 0.8 : 1.8} castShadow shadow-mapSize={[2048, 2048]} />
         <Sapling seed={seed} stage={stage} health={health} />
-        <Ground wetness={wetness} />
+        <Ground wetness={wetness} dusk={dusk} />
         {(watering || weather === "rain") && <Rain height={h + 1} />}
         <ContactShadows position={[0, 0.02, 0]} opacity={0.4} scale={5} blur={2.4} far={3} />
         <OrbitControls enablePan={false} minDistance={h * 0.9} maxDistance={h * 4} maxPolarAngle={Math.PI / 2.05} target={[0, h * 0.45, 0]} />
