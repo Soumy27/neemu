@@ -54,7 +54,7 @@ To use the live API, put `VITE_API_URL=https://uzrl7xynp7.execute-api.us-west-2.
 
 ## Credits
 
-**Design:** the Living Grove look was drafted with Google Stitch and built by hand. Fonts: Outfit, Plus Jakarta Sans, Noto Sans Devanagari; icons: Material Symbols (all OFL or Apache-2.0, via Google Fonts).
+**Design:** the Living Grove look was drafted with Google Stitch, then built in React with Claude Code. Fonts: Outfit, Plus Jakarta Sans, Noto Sans Devanagari; icons: Material Symbols (all OFL or Apache-2.0, via Google Fonts).
 
 **Data:** weather from [Open-Meteo](https://open-meteo.com/) (CC BY 4.0). Map tiles © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL). Water balance after Allen et al., 1998, *FAO Irrigation and Drainage Paper 56*.
 
