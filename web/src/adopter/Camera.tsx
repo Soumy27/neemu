@@ -1,11 +1,11 @@
-// In-app camera for proof photos. The tree's first photo sits on top as a faint
-// "ghost" so the adopter frames the same view every time; that makes the manual
-// same-tree check easy. No gallery upload, except in demo mode.
+// In-app camera for proof photos, shown inside an arch. The tree's first photo sits
+// on top as a faint "ghost" so the adopter frames the same view every time; that
+// makes the people's same-tree check easy. No gallery upload, except in demo mode.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usingMock } from "../api/client";
 
-export function Camera({ referenceUrl, onShot, top }: { referenceUrl: string | null; onShot: (f: File) => void; top?: React.ReactNode }) {
+export function Camera({ referenceUrl, onShot, top }: { referenceUrl: string | null; onShot: (f: File) => void; top?: ReactNode }) {
   const video = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [facing, setFacing] = useState<"environment" | "user">("environment");
@@ -24,7 +24,7 @@ export function Camera({ referenceUrl, onShot, top }: { referenceUrl: string | n
         stream = s;
         if (video.current) video.current.srcObject = s;
       })
-      .catch(() => setError("The camera isn't available. Allow camera access for this site and try again."));
+      .catch(() => setError("The camera isn't available. Allow camera access for this site, then try again."));
     return () => stream?.getTracks().forEach((t) => t.stop());
   }, [facing]);
 
@@ -43,28 +43,28 @@ export function Camera({ referenceUrl, onShot, top }: { referenceUrl: string | n
       <div className="viewfinder">
         <video ref={video} autoPlay playsInline muted />
         {referenceUrl && <img className="ghost" src={referenceUrl} alt="" />}
-        {error && (
+        {error ? (
           <div className="no-camera">
             <span className="ms">no_photography</span>
             <p>{error}</p>
           </div>
-        )}
-        <div className="vf-frame"><i /><i /><i /><i /></div>
-        {top && <div className="top-pills">{top}</div>}
-        {!error && (
-          <div className="hint">
-            {referenceUrl ? <><span className="hi">पहली फोटो से सीध मिलाएं</span> · Line up with the faint first photo</> : "Get the whole sapling and its guard in the frame"}
-          </div>
+        ) : (
+          <>
+            {top && <div className="top-pills">{top}</div>}
+            <div className="hint">
+              {referenceUrl ? <><span className="hi">पहली फोटो से सीध मिलाएं</span><br />Line up with the faint first photo</> : "Frame the whole sapling and its guard"}
+            </div>
+          </>
         )}
         <div className="shutter-row">
           <button className="cam-side" onClick={() => setFacing((f) => (f === "environment" ? "user" : "environment"))} aria-label="Switch camera"><span className="ms">cameraswitch</span></button>
-          <button className="shutter" onClick={shoot} disabled={!!error} aria-label="Take photo"><span className="ms">potted_plant</span></button>
+          <button className="shutter" onClick={shoot} disabled={!!error} aria-label="Take the proof photo"><span className="ms">potted_plant</span></button>
           {usingMock ? (
             <>
               <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && onShot(e.target.files[0])} />
               <button className="cam-side" onClick={() => fileRef.current?.click()} aria-label="Demo: pick a file"><span className="ms">photo_library</span></button>
             </>
-          ) : <span style={{ width: 48 }} />}
+          ) : <span style={{ width: 46 }} />}
         </div>
       </div>
     </div>

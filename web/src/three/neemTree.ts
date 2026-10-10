@@ -68,3 +68,10 @@ export function buildTree({ seed, stage, health }: TreeLook, quality: "hero" | "
   });
   return t;
 }
+
+// The mist at the horizon matches the arch's sky in light and dark themes.
+export function mistColour(weather: "clear" | "hot" | "rain" = "clear") {
+  const dark = typeof matchMedia !== "undefined" && matchMedia("(prefers-color-scheme: dark)").matches;
+  if (dark) return weather === "hot" ? "#5e5233" : weather === "rain" ? "#3f5452" : "#3d5a4c";
+  return weather === "hot" ? "#f3e6cf" : weather === "rain" ? "#d3e0e0" : "#dceee3";
+}

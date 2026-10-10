@@ -5,9 +5,9 @@ import { useState } from "react";
 import { enablePush, pushSupported, type PushResult } from "../api/push";
 
 const said: Record<PushResult, string> = {
-  enabled: "Done. Neemu just sent you a hello. It will call you when it's thirsty.",
-  "needs-install": "On iPhone, first tap Share ⬆︎ then \"Add to Home Screen\", open Neemu from there, and flip this again.",
-  denied: "Notifications are blocked for this site. Turn them on in your browser's site settings, then try again.",
+  enabled: "Done. Neemu has just sent you a hello, and will call you when it's thirsty.",
+  "needs-install": "On iPhone, tap Share, then \"Add to Home Screen\". Open Neemu from there and flip this again.",
+  denied: "Notifications are blocked for this site. Allow them in your browser's site settings, then try again.",
   unsupported: "This browser can't show notifications.",
   failed: "That didn't work. Try again in a moment.",
 };
@@ -34,23 +34,15 @@ export function CallMe({ treeId, treeName, handle }: { treeId: string; treeName:
   }
 
   return (
-    <section className="card callme">
+    <section className="section callme">
       <div className="row">
-        <span className="bell"><span className="ms">notifications_active</span></span>
-        <div>
-          <h2 style={{ margin: 0 }}>Let {treeName} call you</h2>
-          <div className="muted small hi">नीमू आपको याद दिलाएगा</div>
+        <div className="grow">
+          <h3>Let {treeName} call you <span className="hi muted small">· नीमू आपको याद दिलाएगा</span></h3>
+          <p className="muted small">A notification at 6 AM, only on days it needs water.</p>
         </div>
-        <span style={{ flex: 1 }} />
-        <button role="switch" aria-checked={on} aria-label="Turn on notifications" className={`switch ${on ? "on" : ""}`} onClick={tap} disabled={busy}><span /></button>
+        <button role="switch" aria-checked={on} aria-label={`Notifications from ${treeName}`} className={`switch ${on ? "on" : ""}`} onClick={tap} disabled={busy}><span /></button>
       </div>
-      <div className="inner row small">
-        <span><span className="ms outline">schedule</span> Morning check</span>
-        <span style={{ flex: 1 }} />
-        <strong className="green-text">6:00 AM</strong>
-      </div>
-      <p className="muted small">A notification only on days it needs water. Nothing on days it doesn't.</p>
-      {result && <p className={on ? "green-text small" : "muted small"}>{said[result]}</p>}
+      {result && <p className={on ? "mark fine" : "muted small"}>{said[result]}</p>}
     </section>
   );
 }

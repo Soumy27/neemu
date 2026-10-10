@@ -1,11 +1,12 @@
-// Saplings Near You (पास के पौधे): what the drive link opens.
-// A map, filter chips, and a card per sapling, nearest first. Tap one to adopt it.
+// Near you (पास के पौधे): what the drive link opens.
+// The drive's map in a gold frame, beside a ledger of saplings, nearest first.
 
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { api, usingMock } from "../api/client";
 import type { Tree } from "../api/types";
+import { Rule } from "../shell/Ornament";
 import { Shell } from "../shell/Shell";
-import { daysSince, nameHi, speciesLatin, speciesShort, statusWords } from "../shell/words";
+import { daysSince, nameHi, speciesShort, statusWords } from "../shell/words";
 import "./adopter.css";
 import { SaplingArt } from "./SaplingArt";
 
@@ -55,7 +56,12 @@ export function NearbyPicker({ driveId }: { driveId: string }) {
   const shown = (trees ?? []).filter((t) =>
     filter === "free" ? !t.adopter : filter === "thirsty" ? t.water.litresNeeded > 0 && t.status !== "fine" : filter === "taken" ? !!t.adopter : true,
   );
-  const ordered = selected ? [...shown].sort((a, b) => Number(b.id === selected) - Number(a.id === selected)) : shown;
+  const ordered = shown;
+
+  // A pin tapped on the map brings its row into view.
+  useEffect(() => {
+    if (selected) document.getElementById(`row-${selected}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [selected]);
 
   const chips: { id: Filter; en: string; hi: string }[] = [
     { id: "all", en: "All", hi: "सभी" },
@@ -66,89 +72,66 @@ export function NearbyPicker({ driveId }: { driveId: string }) {
 
   return (
     <Shell tab="near" driveId={driveId}>
-      <div className="near-head">
+      <div className="page-head">
         <div>
-          <span className="pill mint"><span className="ms outline">explore</span>Location-based discovery</span>
-          <h1 className="near-title" style={{ marginTop: 8 }}><span className="hi">पास के पौधे</span> · Saplings Near You</h1>
-          <p className="muted"><span className="hi">अपने सामने खड़े पौधे को चुनें</span> (pick the one right in front of you)</p>
+          <h1>Saplings near you</h1>
+          <span className="hi-display">पास के पौधे · अपने सामने खड़े पौधे को चुनें</span>
         </div>
-        <div className="gps-pill">
-          <span className="gps-dot" />
-          <div>
-            <strong>{where.accuracy != null ? "GPS active" : "Location"}</strong>{where.accuracy != null && <span className="sky-text"> ±{Math.round(where.accuracy)} m</span>}
-            <div className="muted">{where.text}</div>
+        <div className="locator">
+          <span className="ms">{where.accuracy != null ? "my_location" : "location_searching"}</span>
+          <span>{where.text}{where.accuracy != null && <> (±<span className="num">{Math.round(where.accuracy)}</span> m)</>}</span>
+        </div>
+      </div>
+      <Rule left />
+
+      <div className="near-court">
+        <div className="map-frame">
+          <Suspense fallback={<div className="map-box loading">Unrolling the map…</div>}>
+            {trees && trees.length > 0
+              ? <RegisterMap trees={shown} selectedId={selected} onSelect={setSelected} />
+              : <div className="map-box loading">{trees ? "No saplings in this drive yet." : "Finding the saplings…"}</div>}
+          </Suspense>
+        </div>
+
+        <div>
+          <div className="filters" role="tablist" aria-label="Show">
+            {chips.map((c) => (
+              <button key={c.id} role="tab" aria-selected={filter === c.id} className={filter === c.id ? "on" : ""} onClick={() => setFilter(c.id)}>
+                {c.en} <span className="hi tiny">{c.hi}</span> <span className="num tiny">{counts[c.id]}</span>
+              </button>
+            ))}
           </div>
+          <ul className="sapling-list">
+            {ordered.map((t) => {
+              const s = statusWords[t.status];
+              const litres = Math.round(t.water.litresNeeded);
+              return (
+                <li key={t.id} id={`row-${t.id}`} className={`sapling-row ${t.adopter ? "taken" : ""} ${t.id === selected ? "picked" : ""}`}>
+                  <SaplingArt stage={t.growthStage} health={t.health} photo={t.referencePhotoUrl} />
+                  <div>
+                    <div className="sapling-name">{t.name}<span className="hi-display">{nameHi(t.name)}</span> <span className="tree-id num">№ {t.id.split("-").pop()}</span></div>
+                    <div className="sapling-sub">
+                      <span>{speciesShort(t.species)}</span>
+                      <span>planted {daysSince(t.plantedOn)} days ago</span>
+                      {t.adopter
+                        ? <span className={`mark ${t.status}`}>{s.en}, with {t.adopter.handle}</span>
+                        : litres > 0 ? <span className="mark thirsty">needs {litres} L today</span> : <span className="mark plain">needs a guardian</span>}
+                    </div>
+                  </div>
+                  <div className="dist num">{Math.round(t.distanceM)}<small>metres</small></div>
+                  <div className="row-actions">
+                    {t.adopter
+                      ? <a className="button quiet" href={`?tree=${encodeURIComponent(t.id)}`}>Visit {t.name}</a>
+                      : <a className="button claim" href={`?tree=${encodeURIComponent(t.id)}`}>This one is mine <span className="hi">· यह मेरा है</span><span className="ms">arrow_forward</span></a>}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="muted small" style={{ marginTop: 14 }}>
+            Can't find it? Step out from under trees or buildings so the GPS settles, then <button className="link" onClick={() => location.reload()}>look again</button>.
+          </p>
         </div>
-      </div>
-
-      <section className="card map-card">
-        <Suspense fallback={<div className="map-box loading">Loading the map…</div>}>
-          {trees && trees.length > 0 ? <RegisterMap trees={shown} selectedId={selected} onSelect={setSelected} /> : <div className="map-box loading">{trees ? "No saplings in this drive yet." : "Loading saplings…"}</div>}
-        </Suspense>
-        <div className="filters">
-          {chips.map((c) => (
-            <button key={c.id} className={filter === c.id ? "on" : ""} onClick={() => setFilter(c.id)}>
-              {c.en} · <span className="hi">{c.hi}</span> ({counts[c.id]})
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <div className="row" style={{ margin: "26px 0 14px" }}>
-        <h2 style={{ margin: 0 }}><span className="ms outline">forest</span> <span className="hi">प्रतीक्षारत पौधे</span> · Nearby saplings</h2>
-        <span style={{ flex: 1 }} />
-        <span className="pill mint">Nearest first</span>
-      </div>
-
-      <div className="sapling-grid">
-        {ordered.map((t) => {
-          const s = statusWords[t.status];
-          const litres = Math.round(t.water.litresNeeded);
-          const dry = t.water.deficitMm > 8;
-          return (
-            <section key={t.id} className={`card sapling-card ${t.adopter ? "taken" : ""} ${t.id === selected ? "picked" : ""}`}>
-              <div className="sapling-top">
-                <span className="pill sky"><span className="ms">near_me</span>{Math.round(t.distanceM)} m away</span>
-                {t.adopter
-                  ? <span className="pill mint"><span className="ms">verified</span>Adopted by {t.adopter.handle} · {s.en}</span>
-                  : litres > 0 ? <span className="pill amber"><span className="ms">water_drop</span>Needs {litres} L today</span>
-                    : <span className="pill"><span className="ms">favorite</span>Needs an adopter</span>}
-              </div>
-              <div className="sapling-body">
-                <SaplingArt stage={t.growthStage} health={t.health} photo={t.referencePhotoUrl} />
-                <div>
-                  <div className="sapling-name"><span className="hi">{nameHi(t.name)}</span> #{t.id.split("-").pop()}<span className="en-name">{t.name}</span></div>
-                  <div className="muted small"><em>{speciesLatin(t.species)}</em> · {speciesShort(t.species)}</div>
-                  <ul className="sapling-meta">
-                    <li><span className="ms outline">calendar_month</span>Planted {daysSince(t.plantedOn)} days ago</li>
-                    <li><span className="ms outline">location_on</span>{t.location.label}</li>
-                    <li><span className="ms outline">eco</span>Health {t.health}/100 · stage {t.growthStage} of 5</li>
-                  </ul>
-                </div>
-              </div>
-              <div className="metric-row">
-                <div>Soil water<strong className={dry ? "dry" : ""}>{dry ? `${t.water.deficitMm} mm short` : "Fine"}</strong></div>
-                <div>Today<strong>{litres > 0 ? `${litres} L` : "No water"}</strong></div>
-                <div>Adoption<strong>{t.adopter ? "Taken" : "Available"}</strong></div>
-              </div>
-              {t.adopter ? (
-                <a className="button block" href={`?tree=${encodeURIComponent(t.id)}`}><span className="ms outline">visibility</span>Say hello · <span className="hi">देखें</span></a>
-              ) : (
-                <a className="button primary block" href={`?tree=${encodeURIComponent(t.id)}`}><span className="ms">favorite</span>This one · <span className="hi">यह पौधा मेरा है</span></a>
-              )}
-            </section>
-          );
-        })}
-      </div>
-
-      <div className="help-strip">
-        <span className="ms outline big-icon green-text">help</span>
-        <div>
-          <strong><span className="hi">पौधा खोजने में समस्या?</span> Having trouble finding it?</strong>
-          <div className="muted small">Step out from under trees or buildings so the GPS settles, then reload. The map shows each sapling's pin from the day it was registered.</div>
-        </div>
-        <span style={{ flex: 1 }} />
-        <button onClick={() => location.reload()}><span className="ms">my_location</span>Refresh location</button>
       </div>
     </Shell>
   );

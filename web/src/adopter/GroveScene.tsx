@@ -7,9 +7,9 @@ import { ContactShadows, Html, OrbitControls } from "@react-three/drei";
 import { useMemo, useState } from "react";
 import * as THREE from "three";
 import type { Tree } from "../api/types";
-import { buildTree, heightFor } from "../three/neemTree";
+import { buildTree, heightFor, mistColour } from "../three/neemTree";
 
-const statusRing: Record<Tree["status"], string> = { fine: "#43a047", thirsty: "#f59e0b", no_proof: "#ea580c", likely_dead: "#6b7280" };
+const statusRing: Record<Tree["status"], string> = { fine: "#2f8a5b", thirsty: "#d99a2b", no_proof: "#c27a1f", likely_dead: "#b0503a" };
 
 type Placed = { tree: Tree; x: number; z: number; stage: number; health: number };
 
@@ -94,17 +94,17 @@ export function GroveScene({ trees, future, selected, onPick }: { trees: Tree[];
   const placed = useMemo(() => place(trees, future), [trees, future]);
   const span = Math.max(8, ...placed.map((p) => Math.hypot(p.x, p.z)));
   return (
-    <Canvas shadows gl={{ alpha: true }} camera={{ position: [span * 0.75, span * 0.55, span * 0.95], fov: 40 }} dpr={[1, 1.75]}>
-      <fog attach="fog" args={["#e9f4e2", span * 1.6, span * 3.2]} />
+    <Canvas shadows gl={{ alpha: true }} camera={{ position: [span * 0.55, span * 0.32, span * 1.15], fov: 42 }} dpr={[1, 1.75]}>
+      <fog attach="fog" args={[mistColour(), span * 1.6, span * 3.2]} />
       <hemisphereLight args={["#fff8e7", "#6d8a4f", 1]} />
       <directionalLight position={[30, 40, 20]} intensity={1.8} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow onClick={() => onPick("")}>
         <circleGeometry args={[span * 4, 64]} />
-        <meshStandardMaterial color="#a7c77c" roughness={1} />
+        <meshStandardMaterial color="#9dbf7e" roughness={1} />
       </mesh>
       <Grove placed={placed} selected={selected} onPick={onPick} />
       <ContactShadows position={[0, 0.03, 0]} opacity={0.35} scale={span * 3} blur={2} far={6} />
-      <OrbitControls enablePan maxPolarAngle={Math.PI / 2.1} minDistance={5} maxDistance={span * 3.5} target={[0, 1, 0]} />
+      <OrbitControls enablePan maxPolarAngle={Math.PI / 2.1} minDistance={5} maxDistance={span * 3.5} target={[0, 0.6, -span * 0.15]} />
     </Canvas>
   );
 }

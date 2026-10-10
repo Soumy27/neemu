@@ -1,6 +1,6 @@
 // Water buddies (साथी रक्षक): adopters of nearby trees.
-// BuddyList: ask one to cover today (Tree Home).
-// BuddyReviews: check their proofs, "is it the same tree?" (Watering & Proof),
+// BuddyList: ask one to cover today (My tree).
+// BuddyReviews: check their proofs, "is it the same tree?" (Watering),
 // which is how a tree is confirmed without anything attached to it.
 
 import { useEffect, useState } from "react";
@@ -12,8 +12,6 @@ const ago = (iso: string) => {
   const m = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
   return m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`;
 };
-
-const avatarTones = ["sky", "mint", "amber"];
 
 export function BuddyList({ treeId, treeName, me }: { treeId: string; treeName: string; me: string }) {
   const [buddies, setBuddies] = useState<Buddy[]>([]);
@@ -28,55 +26,44 @@ export function BuddyList({ treeId, treeName, me }: { treeId: string; treeName: 
   }
 
   return (
-    <section className="card buddies-card">
-      <div className="row">
-        <span className="ms outline big-icon sky-text">group</span>
-        <div>
-          <h2 style={{ margin: 0 }}>Water Buddies · <span className="hi">साथी रक्षक</span></h2>
-          <p className="muted small">Neighbours caring for trees near {treeName}. Can't make it today? Ask one to cover.</p>
-        </div>
-        <span style={{ flex: 1 }} />
-        {buddies.length > 0 && <span className="pill sky">{buddies.length} nearby</span>}
-      </div>
+    <section className="section">
+      <div className="section-title"><h2>Water buddies</h2><span className="hi-display">साथी रक्षक</span></div>
+      <p className="muted">Neighbours who care for the saplings beside {treeName}. If you can't come today, ask one to cover.</p>
       {buddies.length === 0 && <p className="muted small">No buddies nearby yet.</p>}
-      <div className="buddy-tiles">
-        {buddies.map((b, i) => (
-          <div key={b.handle} className="buddy-tile">
-            <div className="row">
-              <span className={`avatar ${avatarTones[i % 3]}`}>{initials(b.handle)}</span>
-              <div>
-                <div className="buddy-name">{b.handle}</div>
-                <div className="muted small">{Math.round(b.distanceM)} m away · {b.treeName}</div>
-              </div>
-            </div>
-            {asked?.to === b.handle ? (
-              <span className="pill mint"><span className="ms">check</span>Asked</span>
-            ) : (
-              <button className="chip" onClick={() => ask(b.handle)} disabled={!!asked}><span className="ms outline">volunteer_activism</span>Ask to cover · <span className="hi">अनुरोध</span></button>
-            )}
-          </div>
+      <ul className="ledger">
+        {buddies.map((b) => (
+          <li key={b.handle}>
+            <span className="seal">{initials(b.handle)}</span>
+            <span className="grow">
+              <strong>{b.handle}</strong>
+              <span className="muted small"> · {b.treeName}, <span className="num">{Math.round(b.distanceM)}</span> m away</span>
+            </span>
+            {asked?.to === b.handle
+              ? <span className="mark fine">Asked</span>
+              : <button className="quiet" onClick={() => ask(b.handle)} disabled={!!asked}>Ask to cover</button>}
+          </li>
         ))}
-      </div>
-      {asked && <p className="muted small rise">{asked.to} gets a message: “{me} can't make it today. Can you water {treeName}? It's {Math.round(asked.distanceM)} m from your tree.”</p>}
+      </ul>
+      {asked && <p className="note rise">{asked.to} receives: “{me} can't make it today. Can you water {treeName}? It's {Math.round(asked.distanceM)} m from your tree.”</p>}
     </section>
   );
 }
 
-export function BuddyReviews({ me, onCount }: { me: string; onCount?: (n: number) => void }) {
+export function BuddyReviews({ me }: { me: string }) {
   const [queue, setQueue] = useState<Review[]>([]);
   const [voted, setVoted] = useState<{ text: string; tone: string } | null>(null);
   const [done, setDone] = useState(0);
 
   useEffect(() => {
-    api.reviews(me).then((q) => { setQueue(q); onCount?.(q.length); }).catch(() => {});
-  }, [me, onCount]);
+    api.reviews(me).then(setQueue).catch(() => {});
+  }, [me]);
 
   async function vote(r: Review, verdict: "same" | "unsure" | "different") {
     const res = await api.review(r.proofId, verdict, me);
     setVoted(
-      res.review === "confirmed" ? { text: `Thanks. ${r.treeName}'s watering is confirmed.`, tone: "mint" }
-        : res.review === "rejected" ? { text: "Thanks. That proof won't count.", tone: "rose" }
-          : { text: "Thanks. Someone else will take a look too.", tone: "sky" },
+      res.review === "confirmed" ? { text: `Thank you. ${r.treeName}'s watering is confirmed.`, tone: "fine" }
+        : res.review === "rejected" ? { text: "Thank you. That proof won't count.", tone: "likely_dead" }
+          : { text: "Thank you. Someone else will look too.", tone: "water" },
     );
     setDone((d) => d + 1);
     setQueue((q) => q.filter((x) => x.proofId !== r.proofId));
@@ -84,50 +71,41 @@ export function BuddyReviews({ me, onCount }: { me: string; onCount?: (n: number
 
   const r = queue[0];
   return (
-    <section className="card verify">
-      <div className="row">
-        <div>
-          <h2 style={{ margin: 0 }}><span className="ms outline">groups</span> Community Verification</h2>
-          <div className="verify-hi hi">सामुदायिक जांच</div>
-        </div>
-        <span style={{ flex: 1 }} />
-        <span className="pill amber">{queue.length} pending</span>
+    <section className="section verify">
+      <div className="section-title">
+        <h2>Is it the same tree?</h2>
+        <span className="hi-display">क्या यह वही पौधा है?</span>
+        <span className="grow" />
+        <span className="mark plain num">{queue.length} waiting</span>
       </div>
 
       {!r ? (
-        <div className="empty-state">
-          <span className="ms big-icon">task_alt</span>
-          <p>{done > 0 ? "All caught up. Thank you!" : "Nothing to check right now."}</p>
-          <p className="muted small">When a neighbour waters their sapling, you may be asked to confirm it's the same tree as its first photo.</p>
+        <div className="quiet-state">
+          <p>{done > 0 ? "All checked. Thank you." : "Nothing to check right now."}</p>
+          <p className="muted small">When a neighbour waters their sapling, you may be asked to compare their photo with the tree's first photo. A person can tell two saplings apart; GPS cannot.</p>
         </div>
       ) : (
         <div className="rise" key={r.proofId}>
-          <p className="muted">Help check a watering proof for <strong>{r.treeName}</strong>, sent {ago(r.takenAt)}.</p>
-          <div className="pair">
+          <p className="muted">A watering proof for <strong>{r.treeName}</strong>, sent {ago(r.takenAt)}.</p>
+          <div className="pair diptych">
             <figure>
-              <div className="photo-frame"><img src={r.referencePhotoUrl ?? ""} alt={`${r.treeName}, first photo`} /><span className="pill dark corner"><span className="hi">रोपण के दिन</span> · First photo</span></div>
-              <figcaption>First day record</figcaption>
+              <img src={r.referencePhotoUrl ?? ""} alt={`${r.treeName}, first photo`} />
+              <figcaption><span className="hi">रोपण के दिन</span> · first photo</figcaption>
             </figure>
             <figure>
-              <div className="photo-frame today"><img src={r.proofPhotoUrl} alt={`${r.treeName}, today`} /><span className="pill dark corner"><span className="live-dot" />Today · <span className="hi">आज</span></span></div>
-              <figcaption>Today's submission</figcaption>
+              <img src={r.proofPhotoUrl} alt={`${r.treeName}, today`} />
+              <figcaption><span className="hi">आज</span> · today{r.distanceM != null && <>, <span className="num">{Math.round(r.distanceM)}</span> m from its pin</>}</figcaption>
             </figure>
           </div>
-          <div className="inner row small verify-facts">
-            <span><span className="ms outline">location_on</span> {r.distanceM != null ? `${Math.round(r.distanceM)} m from the pin` : "No location"}{r.accuracyM != null ? ` (±${Math.round(r.accuracyM)} m)` : ""}</span>
-            <span style={{ flex: 1 }} />
-            <span><span className="ms outline">schedule</span> Server time recorded</span>
-          </div>
-          <h3 className="verify-q"><span className="hi">क्या यह वही पौधा है?</span></h3>
-          <p className="muted center">Is it the same tree? Compare the leaves, the guard and what's behind it.</p>
-          <div className="vote-row">
-            <button className="vote same" onClick={() => vote(r, "same")}><span className="ms">check_circle</span><span>Same tree<small className="hi">वही पौधा है</small></span></button>
-            <button className="vote unsure" onClick={() => vote(r, "unsure")}><span className="ms outline">help</span><span>Not sure<small className="hi">निश्चित नहीं</small></span></button>
-            <button className="vote diff" onClick={() => vote(r, "different")}><span className="ms outline">cancel</span><span>Different<small className="hi">अलग पौधा</small></span></button>
+          <p className="muted small center">Compare the leaves, the guard, and what stands behind it.</p>
+          <div className="verdicts">
+            <button className="primary" onClick={() => vote(r, "same")}><span className="ms">check</span>Same tree <span className="hi">· वही है</span></button>
+            <button onClick={() => vote(r, "unsure")}>Not sure <span className="hi">· पता नहीं</span></button>
+            <button className="danger" onClick={() => vote(r, "different")}>Different <span className="hi">· अलग है</span></button>
           </div>
         </div>
       )}
-      {voted && <p className={`pill ${voted.tone} rise`} style={{ marginTop: 12 }}>{voted.text}</p>}
+      {voted && <p className={`mark ${voted.tone} rise`} style={{ marginTop: 14 }}>{voted.text}</p>}
     </section>
   );
 }

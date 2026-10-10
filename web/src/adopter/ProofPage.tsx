@@ -1,10 +1,11 @@
-// Watering & Proof (पानी और फोटो): take the proof photo for your tree, and
+// Watering (पानी और फोटो): take the proof photo for your tree inside its arch, and
 // help neighbours by checking theirs. Code checks place and freshness; people
 // check "same tree".
 
 import { useEffect, useState } from "react";
 import { api, SourceError } from "../api/client";
 import type { ProofResult, Tree } from "../api/types";
+import { Arch, Rule } from "../shell/Ornament";
 import { rememberTree, Shell } from "../shell/Shell";
 import { nameHi, speciesLatin } from "../shell/words";
 import "./adopter.css";
@@ -38,96 +39,87 @@ export function ProofPage({ treeId }: { treeId: string }) {
   }
 
   const me = tree?.adopter?.handle ?? "";
+  const accepted = result?.verdict === "accepted";
 
   return (
     <Shell tab="proof" treeId={treeId} driveId={tree?.driveId}>
-      <div className="sync-head">
-        <span className="live-dot" />
+      <div className="page-head">
         <div>
-          <h1>Watering proof & community check</h1>
-          <div className="muted small"><span className="hi">पानी का प्रमाण और सामुदायिक जांच</span></div>
+          <h1>Proof of watering</h1>
+          <span className="hi-display">पानी का प्रमाण, और पड़ोसियों की जांच</span>
         </div>
-        <span style={{ flex: 1 }} />
-        {tree && <span className="pill"><span className="ms outline">local_fire_department</span>Streak: {tree.streakDays} days</span>}
+        {tree && <span className="mark plain num">{tree.streakDays} days in a row</span>}
       </div>
+      <Rule left />
 
-      <div className="proof-grid">
-        <div className="col">
-          <section className="card">
+      <div className="proof-court">
+        <div>
+          <Arch className="camera-arch">
             {!tree ? (
-              <p className="muted">{error ?? "Finding your tree…"}</p>
+              <div className="no-camera"><p>{error ?? "Finding your tree…"}</p></div>
+            ) : !tree.adopter ? (
+              <div className="accepted-court">
+                <span className="ms">volunteer_activism</span>
+                <h2>Only its guardian sends proof</h2>
+                <p>Adopt {tree.name} first, then come back after watering.</p>
+                <a className="button gold" href={`?tree=${encodeURIComponent(tree.id)}`}>Open {tree.name}</a>
+              </div>
+            ) : checking ? (
+              <div className="checking">
+                <span className="ms">water_drop</span>
+                <h2 style={{ color: "inherit" }}>Checking the photo…</h2>
+                <p>Where you were, and whether this photo is new.</p>
+              </div>
+            ) : accepted ? (
+              <div className="accepted-court rise">
+                <span className="ms">verified</span>
+                <h2>Accepted <span className="hi-display">· स्वीकार</span></h2>
+                <p>
+                  {result.distanceM != null ? <>You were <span className="num">{Math.round(result.distanceM)}</span> m from {tree.name}{result.accuracyM != null && <> (±<span className="num">{Math.round(result.accuracyM)}</span> m)</>}. </> : null}
+                  {tree.streakDays} days in a row.
+                  {result.review === "pending" && <> A water buddy will confirm it's the same tree.</>}
+                </p>
+                <a className="button gold" href={`?tree=${encodeURIComponent(tree.id)}`}>Back to {tree.name}</a>
+              </div>
             ) : (
-              <>
-                <div className="name-row">
-                  <div>
-                    <h2 style={{ margin: 0 }}><span className="pill id">#{tree.id.split("-").pop()}</span> {tree.name} · <span className="hi">{nameHi(tree.name)}</span></h2>
-                    <p className="muted small"><em>{speciesLatin(tree.species)}</em> · {tree.location.label}</p>
-                  </div>
-                  <span className={`pill ${tree.referencePhotoUrl ? "mint" : ""}`}><span className="ms outline">layers</span>Ghost overlay: {tree.referencePhotoUrl ? "on" : "no first photo"}</span>
-                </div>
-
-                {!tree.adopter ? (
-                  <div className="inner" style={{ marginTop: 12 }}>
-                    <p>Only {tree.name}'s adopter can send its watering proof.</p>
-                    <a className="button primary" href={`?tree=${encodeURIComponent(tree.id)}`}>Open {tree.name} to adopt it</a>
-                  </div>
-                ) : checking ? (
-                  <div className="checking">
-                    <span className="ms">water_drop</span>
-                    <strong>Checking the photo…</strong>
-                    <span className="muted small">Where you were, and whether this photo is new.</span>
-                  </div>
-                ) : result?.verdict === "accepted" ? (
-                  <div className="result accepted rise" style={{ padding: 20 }}>
-                    <h2 style={{ margin: 0 }}><span className="ms">check_circle</span> Accepted · <span className="hi">स्वीकार</span></h2>
-                    <p>
-                      Location checked{result.distanceM != null && `: ${Math.round(result.distanceM)} m from the tree`}{result.accuracyM != null && ` (±${Math.round(result.accuracyM)} m)`}. Streak now {tree.streakDays}.
-                      {result.review === "pending" && <> A water buddy will confirm it's the same tree.</>}
-                    </p>
-                    <a className="button primary" href={`?tree=${encodeURIComponent(tree.id)}`}><span className="ms">potted_plant</span>Back to {tree.name}</a>
-                  </div>
-                ) : (
-                  <div style={{ marginTop: 12 }}>
-                    <Camera
-                      referenceUrl={tree.referencePhotoUrl}
-                      onShot={onShot}
-                      top={<><span className="pill dark"><span className="ms">photo_camera</span>Proof photo</span><span className="pill dark"><span className="ms">water_drop</span>{Math.round(tree.water.litresNeeded)} L asked</span></>}
-                    />
-                    {result?.verdict === "rejected" && (
-                      <div className="result rejected rise">
-                        <ul>{result.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
-                      </div>
-                    )}
-                    <div className="inner row small" style={{ marginTop: 12 }}>
-                      <span className="ms outline green-text">task_alt</span>
-                      <span><strong>Ready to capture proof</strong> · <span className="hi">प्रमाण लेने के लिए तैयार</span><br /><span className="muted">Your location and the server's time go with the photo.</span></span>
-                    </div>
-                  </div>
-                )}
-              </>
+              <Camera
+                referenceUrl={tree.referencePhotoUrl}
+                onShot={onShot}
+                top={<><span><span className="ms">water_drop</span> {Math.round(tree.water.litresNeeded)} L asked today</span><span><span className="ms">layers</span> {tree.referencePhotoUrl ? "first photo shown faintly" : "no first photo yet"}</span></>}
+              />
             )}
-          </section>
-
+          </Arch>
+          {result?.verdict === "rejected" && (
+            <div className="result rejected rise"><ul>{result.reasons.map((r) => <li key={r}>{r}</li>)}</ul></div>
+          )}
           <div className="tips">
-            <div className="tip"><span className="ms">wb_sunny</span><span><strong>Good light</strong>Keep the sun behind you</span></div>
-            <div className="tip"><span className="ms">water</span><span><strong>Show the wet ring</strong>The soaked basin around it</span></div>
-            <div className="tip"><span className="ms">fence</span><span><strong>Frame the guard</strong>Whole guard and what's behind</span></div>
+            <span><span className="ms">wb_sunny</span> Keep the sun behind you</span>
+            <span><span className="ms">water</span> Show the wet basin</span>
+            <span><span className="ms">fence</span> Frame the whole guard</span>
           </div>
         </div>
 
-        <div className="col">
+        <div className="proof-side">
+          {tree && (
+            <div className="proof-tree">
+              <div className="tree-hi hi-display">{nameHi(tree.name)}</div>
+              <h2>{tree.name} <span className="tree-id num">№ {tree.id.split("-").pop()}</span></h2>
+              <p className="tree-meta"><em>{speciesLatin(tree.species)}</em> · {tree.location.label}</p>
+            </div>
+          )}
+          <Rule left />
           {me ? <BuddyReviews me={me} /> : (
-            <section className="card verify">
-              <h2><span className="ms outline">groups</span> Community Verification</h2>
-              <div className="verify-hi hi">सामुदायिक जांच</div>
-              <p className="muted">Adopt a sapling to help check your neighbours' watering photos.</p>
+            <section className="section">
+              <div className="section-title"><h2>Is it the same tree?</h2><span className="hi-display">सामुदायिक जांच</span></div>
+              <p className="muted">Adopt a sapling to help confirm your neighbours' watering photos.</p>
             </section>
           )}
-          <section className="card sand">
-            <span className="eyebrow"><span className="ms">info</span>How proof works · <span className="hi">कैसे काम करता है</span></span>
+          <Rule left />
+          <section className="section">
+            <div className="section-title"><h3>How a proof is checked</h3></div>
             <ol className="how">
               <li>Code checks you were within reach of the sapling, and that the photo has not been sent before.</li>
-              <li>Some proofs go to a neighbour or the organiser, who compares them with the first photo.</li>
+              <li>Some proofs go to a neighbour or the organiser, who compares them with the tree's first photo.</li>
               <li>Two "different" votes, or one from the organiser, undo the credit.</li>
             </ol>
           </section>

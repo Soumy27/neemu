@@ -6,7 +6,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, OrbitControls } from "@react-three/drei";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { buildTree, heightFor } from "../three/neemTree";
+import { buildTree, heightFor, mistColour } from "../three/neemTree";
 
 export type Weather = "clear" | "hot" | "rain";
 
@@ -86,7 +86,7 @@ export function Tree3D({ seed, stage, health, wetness, watering, weather = "clea
       )}
       <Canvas onCreated={() => setReady(true)} shadows gl={{ alpha: true }} camera={{ position: [h * 1.3, h * 0.75, h * 1.6], fov: 38 }} dpr={[1, 2]}>
         {/* the sky is the CSS gradient behind a transparent canvas; mist hides the ground's edge */}
-        <fog attach="fog" args={[weather === "hot" ? "#fbe9d0" : weather === "rain" ? "#dbe7ee" : "#e9f4e2", h * 2.2, h * 5]} />
+        <fog attach="fog" args={[mistColour(weather), h * 2.2, h * 5]} />
         <hemisphereLight args={["#fff8e7", "#6d8a4f", weather === "rain" ? 0.7 : 1]} />
         <directionalLight position={sun} intensity={weather === "hot" ? 2.4 : weather === "rain" ? 0.8 : 1.8} castShadow shadow-mapSize={[2048, 2048]} />
         <Sapling seed={seed} stage={stage} health={health} />

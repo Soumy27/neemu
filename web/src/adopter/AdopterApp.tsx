@@ -1,11 +1,12 @@
-// Tree Home (मेरा पौधा): the sapling as a living character.
-// Left: the 3D tree and what Neemu says (with its reasoning). Right: the tree's
-// card, today's mission, notifications and a way to talk to it.
+// My tree (मेरा पौधा): the sapling as a living character, framed in a Mughal arch.
+// Beside it: its name, what it says today, and the one thing to do. Below: how it
+// decided, its vital signs, and the people around it.
 
 import { useEffect, useRef, useState } from "react";
 import { api, partlyLive, SourceError, usingMock } from "../api/client";
 import { scenario, scenarioLabel } from "../api/mock";
 import type { NeemuSays, Tree } from "../api/types";
+import { Arch, Rule } from "../shell/Ornament";
 import { rememberTree, Shell } from "../shell/Shell";
 import { daysSince, nameHi, plantedLabel, speciesHiOf, speciesLatin, speciesShort, statusWords } from "../shell/words";
 import "./adopter.css";
@@ -16,16 +17,16 @@ import { Tree3D, type Weather } from "./Tree3D";
 import { listen, speak } from "./voice";
 
 const stepInfo: Record<string, { en: string; hi: string; icon: string }> = {
-  get_weather: { en: "Weather", hi: "मौसम", icon: "partly_cloudy_day" },
-  get_forecast: { en: "Forecast", hi: "पूर्वानुमान", icon: "cloud" },
-  water_balance: { en: "Soil water", hi: "मिट्टी का पानी", icon: "water_drop" },
-  litres_needed: { en: "Litres", hi: "लीटर", icon: "water_full" },
-  heat_check: { en: "Heat", hi: "गर्मी", icon: "local_fire_department" },
+  get_weather: { en: "Today's weather", hi: "आज का मौसम", icon: "partly_cloudy_day" },
+  get_forecast: { en: "The forecast", hi: "पूर्वानुमान", icon: "cloud" },
+  water_balance: { en: "Water in the soil", hi: "मिट्टी में पानी", icon: "water_drop" },
+  litres_needed: { en: "What it needs", hi: "कितना पानी", icon: "water_full" },
+  heat_check: { en: "The heat", hi: "गर्मी", icon: "local_fire_department" },
 };
 
 const suggestions = [
-  { text: "कैसा लग रहा है?", en: "How are you feeling?", lang: "hi" as const },
-  { text: "कल बारिश होगी क्या?", en: "Will it rain tomorrow?", lang: "hi" as const },
+  { text: "कैसा लग रहा है?", en: "How are you?", lang: "hi" as const },
+  { text: "कल बारिश होगी क्या?", en: "Rain tomorrow?", lang: "hi" as const },
   { text: "What about tomorrow?", en: "", lang: "en" as const },
 ];
 
@@ -40,6 +41,7 @@ export function AdopterApp({ treeId }: { treeId: string }) {
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [voiceVia, setVoiceVia] = useState<string | null>(null);
+  const [playing, setPlaying] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
   const [handle, setHandle] = useState("");
   const [question, setQuestion] = useState("");
@@ -59,10 +61,17 @@ export function AdopterApp({ treeId }: { treeId: string }) {
   useEffect(() => {
     if (!says) return;
     setShownSteps(0);
-    const timers = says.steps.map((_, i) => setTimeout(() => setShownSteps(i + 1), 450 * (i + 1)));
-    const talk = setTimeout(() => voiceOn.current && setVoiceVia(speak(says.textHi, says.audioUrl).via), 450 * (says.steps.length + 1));
+    const timers = says.steps.map((_, i) => setTimeout(() => setShownSteps(i + 1), 380 * (i + 1)));
+    const talk = setTimeout(() => voiceOn.current && play(says), 380 * (says.steps.length + 1));
     return () => [...timers, talk].forEach(clearTimeout);
   }, [says]);
+
+  function play(s: NeemuSays) {
+    const v = speak(s.textHi, s.audioUrl);
+    setVoiceVia(v.via);
+    setPlaying(true);
+    setTimeout(() => setPlaying(false), 4200);
+  }
 
   async function run(p: Promise<NeemuSays>, voice = true) {
     voiceOn.current = voice;
@@ -116,207 +125,198 @@ export function AdopterApp({ treeId }: { treeId: string }) {
   const heat = says?.heatwave?.active ? says.heatwave : null;
   const weather: Weather = heat ? "hot" : w.rainLast48hMm >= 10 ? "rain" : "clear";
   const litres = Math.round(says?.ask === "water" ? says.litres : w.litresNeeded);
-  const status = tree.adopter ? statusWords[tree.status] : null;
-  const vitalityTone = tree.health < 30 ? "amber" : tree.health < 60 ? "sky" : "green";
+  const status = statusWords[tree.status];
+  const id = tree.id.split("-").pop();
 
   const strip = heat
-    ? { tone: "hot" as const, text: <><span className="ms">local_fire_department</span> <span className="hi">आज गर्मी का दिन: {heat.tMaxC}°C · शाम 6 बजे से पहले पानी दें</span> · Heat day: water before 6 PM</> }
+    ? { tone: "hot" as const, text: <><span className="ms">local_fire_department</span> <span className="hi">आज गर्मी का दिन, {heat.tMaxC}°C · शाम 6 बजे से पहले पानी दें</span> · Heat day: water before 6 PM</> }
     : weather === "rain"
-      ? { tone: "rain" as const, text: <><span className="ms">rainy</span> <span className="hi">बारिश हुई · {w.rainLast48hMm} mm</span> · Rain covered today's water</> }
+      ? { tone: "rain" as const, text: <><span className="ms">rainy</span> <span className="hi">पिछले दो दिन में {w.rainLast48hMm} mm बारिश</span> · Rain covered today's water</> }
       : null;
 
   return (
-    <Shell tab="home" treeId={tree.id} driveId={tree.driveId} strip={strip} weather={`${Math.round(w.tMaxTodayC)}°C · ${tree.location.label.split(",")[0]}`}>
+    <Shell tab="home" treeId={tree.id} driveId={tree.driveId} strip={strip} weather={`${Math.round(w.tMaxTodayC)}°C, ${tree.location.label.split(",")[0]}`}>
       {usingMock && (
-        <div className="banner">
+        <div className="banner"><span className="ms">info</span>
           {partlyLive
-            ? scenario === "today" ? "Live: weather, water and Neemu's voice come from the Neemu API on AWS. Some screens still use examples." : scenarioLabel[scenario].replace("The tree and its owner are examples.", "Live from the Neemu API.")
+            ? scenario === "today" ? "Live weather and voice from the Neemu API on AWS; some screens still use examples." : scenarioLabel[scenario].replace("The tree and its owner are examples.", "Live from the Neemu API.")
             : scenarioLabel[scenario]}
         </div>
       )}
 
-      {heat && (
-        <div className="heat-banner rise">
-          <span className="heat-icon"><span className="ms">local_fire_department</span></span>
-          <div>
-            <div className="heat-title">Heat Day · {heat.tMaxC}°C <span className="pill amber hi">धूप बहुत तेज है</span></div>
-            <p>Every tree in the drive needs water before 6:00 PM. <span className="hi">सभी पौधों को शाम 6 बजे से पहले पानी दें।</span></p>
+      <div className="court">
+        <div className="court-tree">
+          <Arch className={`tree-arch ${weather}`}>
+            <Tree3D seed={tree.id} stage={tree.growthStage} health={tree.health} wetness={wetness} watering={celebrate} weather={weather} />
+          </Arch>
+          <div className="plaque">
+            <span className={`mark ${tree.adopter ? tree.status : litres > 0 ? "thirsty" : "plain"}`}>
+              {tree.adopter ? <><span className="hi">{status.hi}</span> · {status.en}</> : <><span className="hi">पालक चाहिए</span> · Needs an adopter</>}
+            </span>
+            <span className="plaque-sep" />
+            <span><span className="ms">thermostat</span> {w.tMaxTodayC}°C</span>
+            <span className="plaque-sep" />
+            <span><span className="ms">water_drop</span> soil {Math.round(wetness * 100)}% full</span>
           </div>
         </div>
-      )}
 
-      <div className="home-grid">
-        <div className="col">
-          <section className="card hero">
-            <div className={`stage ${weather}`}>
-              <Tree3D seed={tree.id} stage={tree.growthStage} health={tree.health} wetness={wetness} watering={celebrate} weather={weather} />
-              <div className="overlay tl">
-                {status ? (
-                  <span className={`pill ${status.tone}`}><span className="ms">{status.icon}</span><span className="hi">{status.hi}</span> · {status.en}{litres > 0 && tree.status !== "fine" ? ` (${litres} L today)` : ""}</span>
-                ) : (
-                  <span className="pill amber"><span className="ms">volunteer_activism</span><span className="hi">पालक चाहिए</span> · Needs an adopter{litres > 0 ? ` · ${litres} L today` : ""}</span>
-                )}
-              </div>
-              <div className="overlay tr">
-                <span className="pill dark"><span className="ms">{heat ? "sunny" : weather === "rain" ? "rainy" : "partly_cloudy_day"}</span>{w.tMaxTodayC}°C</span>
-                <span className="pill dark"><span className="ms">water_drop</span>Soil {Math.round(wetness * 100)}%</span>
-              </div>
-              <div className="overlay bl">
-                <span className="pill dark"><span className="ms">location_on</span>{tree.location.label}</span>
-              </div>
-              <div className="overlay br">
-                {says && <button className="pill-btn" onClick={() => setVoiceVia(speak(says.textHi, says.audioUrl).via)}><span className="ms">volume_up</span><span className="hi">आवाज़ सुनें</span></button>}
-              </div>
-            </div>
+        <div className="court-words">
+          <div className="title-block">
+            <div className="tree-hi hi-display">{nameHi(tree.name)}</div>
+            <h1 className="tree-en">{tree.name} <span className="tree-id num">№ {id}</span></h1>
+            <p className="tree-meta">
+              <em>{speciesLatin(tree.species)}</em> · <span className="hi">{speciesHiOf(tree.species) || speciesShort(tree.species)}</span> · {tree.location.label}
+            </p>
+          </div>
 
-            <div className="speaks inner">
-              <div className="row speaks-head">
-                <span className="eyebrow"><span className="ms">eco</span>{tree.name} speaks · <span className="hi">{nameHi(tree.name)} की बात</span></span>
-                {says?.spokenBy === "agent" && <span className="pill mint">Live AI</span>}
-                <span style={{ flex: 1 }} />
-                {says && <button className="primary small-btn" onClick={() => setVoiceVia(speak(says.textHi, says.audioUrl).via)}><span className="ms">play_circle</span>Play voice · <span className="hi">सुनें</span></button>}
-              </div>
-
-              {thinking && !says && <p className="muted">{tree.name} is checking the weather…</p>}
-              {says && shownSteps >= says.steps.length ? (
-                <div className="rise">
-                  {says.replay && <span className="pill sky"><span className="ms">history</span>Replay of {says.asOf} · real weather</span>}
-                  <blockquote lang="hi" className="hi">“{says.textHi}”</blockquote>
-                  <p className="en-line">“{says.textEn}”</p>
+          <figure className="voice">
+            {thinking && !says && <p className="muted">{tree.name} is reading today's weather…</p>}
+            {says && (
+              <>
+                {says.replay && <p className="replay"><span className="ms">history</span> A replay of {says.asOf}, with that day's real weather</p>}
+                <blockquote lang="hi" className={`inscription ${shownSteps >= says.steps.length ? "shown" : ""}`}>{says.textHi}</blockquote>
+                <figcaption className="translation">{says.textEn}</figcaption>
+                <div className="row voice-actions">
+                  <button className={`listen ${playing ? "playing" : ""}`} onClick={() => play(says)} aria-label={`Hear ${tree.name}`}>
+                    <span className="ms fill">{playing ? "graphic_eq" : "play_arrow"}</span>
+                  </button>
+                  <span className="listen-label"><span className="hi">सुनें</span> · Hear {tree.name}</span>
+                  {says.spokenBy === "agent" && <span className="mark fine tiny">Written live by AI</span>}
                 </div>
-              ) : says ? <p className="muted">{tree.name} is thinking…</p> : null}
-
-              {says && (
-                <div className="reasoning">
-                  <div className="row">
-                    <span className="eyebrow muted-eyebrow">How {tree.name} worked it out · <span className="hi">नीमू की गणना</span></span>
-                    <span style={{ flex: 1 }} />
-                    <button className="link" onClick={() => setShowWhy((v) => !v)}>{showWhy ? "Hide numbers" : <>Why? <span className="hi">आंकड़े देखें</span></>}</button>
-                  </div>
-                  <ol className="step-chips">
-                    {says.steps.map((s, i) => {
-                      const info = stepInfo[s.tool] ?? { en: s.tool, hi: "", icon: "calculate" };
-                      return (
-                        <li key={i} className={`step-chip ${i < shownSteps ? "shown" : ""} ${s.ok ? "" : "bad"}`}>
-                          <span className="ms">{info.icon}</span>
-                          <div>
-                            <div className="step-title">Step {i + 1}: {info.en}</div>
-                            <div className="step-sum">{s.summary}</div>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ol>
-                  {showWhy && (
-                    <table className="facts rise">
-                      <tbody>{says.facts.map((f) => <tr key={f.label}><td>{f.label}</td><td>{f.value}</td></tr>)}</tbody>
-                    </table>
-                  )}
-                  <p className="fine-print">
-                    <span className="ms">auto_awesome</span>
-                    {says.spokenBy === "template"
-                      ? <> Today's sentence is a fixed template because the AI is offline. Every number is computed from Open-Meteo weather by the water-balance engine.</>
-                      : <> Numbers come from the water-balance engine on real Open-Meteo weather; the AI only chooses the words.</>}
-                    {voiceVia === "browser" && " Browser voice stands in for Amazon Polly in demo mode."}
-                  </p>
-                </div>
-              )}
-            </div>
-          </section>
-
-          {tree.adopter && <BuddyList treeId={tree.id} treeName={tree.name} me={tree.adopter.handle} />}
-        </div>
-
-        <div className="col">
-          <section className="card tree-card">
-            <div className="name-row">
-              <div>
-                <h1 className="tree-name">{tree.name} · <span className="hi">{nameHi(tree.name)}</span> <span className="pill id">#{tree.id.split("-").pop()}</span></h1>
-                <p className="latin"><em>{speciesLatin(tree.species)}</em> <span className="hi">({speciesHiOf(tree.species) || speciesShort(tree.species)})</span></p>
-                <p className="muted small"><span className="ms outline">location_on</span> {tree.location.label}</p>
-              </div>
-              {tree.adopter ? <span className="pill mint"><span className="ms">verified</span>Adopted</span> : <span className="pill amber"><span className="ms">favorite</span>Free to adopt</span>}
-            </div>
-
-            <div className="vitality">
-              <div className="row">
-                <span className="vit-label"><span className="ms outline">eco</span> Vitality · <span className="hi">स्वास्थ्य स्तर</span></span>
-                <span style={{ flex: 1 }} />
-                <span className={`vit-value ${vitalityTone}`}>{tree.health}%</span>
-              </div>
-              <div className="vit-track"><div className={`vit-fill ${vitalityTone}`} style={{ width: `${tree.health}%` }} /></div>
-              <div className="row small muted">
-                <span>Planted {plantedLabel(tree.plantedOn)} · {daysSince(tree.plantedOn)} days ago</span>
-                <span style={{ flex: 1 }} />
-                <span>Growth stage {tree.growthStage} of 5</span>
-              </div>
-            </div>
-
-            <div className="stat-tiles">
-              <div className="stat-tile">
-                <span className="eyebrow amber-eyebrow"><span className="ms">local_fire_department</span>Streak · <span className="hi">निरंतरता</span></span>
-                <div className="stat-num">{tree.streakDays} <small>{tree.streakDays === 1 ? "day" : "days"}</small></div>
-                <span className="muted small">Days in a row it was cared for</span>
-              </div>
-              <div className="stat-tile">
-                <span className="eyebrow sky-eyebrow"><span className="ms">water_drop</span>Saved · <span className="hi">बचाया</span></span>
-                <div className="stat-num">{Math.round(tree.litresSaved)} <small>litres</small></div>
-                <span className="muted small">Not poured, because rain did it</span>
-              </div>
-            </div>
-          </section>
+              </>
+            )}
+          </figure>
 
           {!tree.adopter ? (
-            <section className="card hero-green mission">
-              <span className="pill mission-tag">Become its guardian · <span className="hi">पालक बनें</span></span>
-              <h2 className="mission-title">Adopt {tree.name} · <span className="hi">{nameHi(tree.name)} को गोद लें</span></h2>
-              <p className="muted">It needs one person. It will tell you when it's thirsty, and when it isn't.</p>
+            <section className="panel act">
+              <h2>Adopt {tree.name} <span className="hi-display">· {nameHi(tree.name)} को गोद लें</span></h2>
+              <p className="muted">It needs one guardian. It will tell you when it's thirsty, and when it isn't.</p>
               <div className="adopt-row">
-                <input value={handle} onChange={(e) => setHandle(e.target.value)} placeholder="Your name · आपका नाम" onKeyDown={(e) => e.key === "Enter" && onAdopt()} />
-                <button className="white" onClick={onAdopt}><span className="ms">favorite</span>Adopt</button>
+                <input value={handle} onChange={(e) => setHandle(e.target.value)} placeholder="Your name · आपका नाम" aria-label="Your name" onKeyDown={(e) => e.key === "Enter" && onAdopt()} />
+                <button className="gold" onClick={onAdopt}>Become its guardian</button>
               </div>
             </section>
           ) : says?.ask === "water" ? (
-            <section className="card hero-green mission">
-              <div className="row"><span className="pill mission-tag">Today's mission · <span className="hi">आज का कार्य</span></span><span className="muted small">Due by 6:00 PM</span></div>
-              <h2 className="mission-title">{litres} litres needed today <span className="hi">(आज {litres} लीटर)</span></h2>
-              <p className="muted">Pour slowly around the basin so it soaks in. Then snap one photo from the same spot as the first one.</p>
-              <a className="button white block" href={`?view=proof&tree=${encodeURIComponent(tree.id)}`}><span className="ms">photo_camera</span>I gave {litres} L, send proof · <span className="hi">फोटो भेजें</span></a>
-              <button className="ghost-light block" onClick={() => shareCard(tree, says)}><span className="ms">share</span>Share {tree.name}'s story · <span className="hi">शेयर करें</span></button>
+            <section className="panel act">
+              <p className="act-kicker"><span className="hi">आज का कार्य</span> · Today, before 6 PM</p>
+              <h2><span className="num act-big">{litres}</span> litres <span className="hi-display">· आज {litres} लीटर</span></h2>
+              <p className="muted">Pour slowly around the basin so it soaks in. Then take one photo from the spot of the first one.</p>
+              <div className="row wrap">
+                <a className="button gold" href={`?view=proof&tree=${encodeURIComponent(tree.id)}`}><span className="ms">photo_camera</span>I gave {litres} L, send proof</a>
+                <button className="on-panel" onClick={() => shareCard(tree, says)}><span className="ms">ios_share</span>Share</button>
+              </div>
             </section>
           ) : (
-            <section className="card mint rest">
-              <span className="eyebrow"><span className="ms">self_care</span>Nothing to do today · <span className="hi">आज आराम</span></span>
-              <h2>{tree.name} is fine today.</h2>
-              <p className="muted">The soil still holds water. Neemu will ask when it needs you.</p>
-              {says && <button onClick={() => shareCard(tree, says)}><span className="ms">share</span>Share</button>}
+            <section className="panel act calm">
+              <p className="act-kicker"><span className="hi">आज आराम</span> · Nothing to do today</p>
+              <h2>{tree.name} has water enough.</h2>
+              <p className="muted">The soil still holds what it needs. It will ask when it needs you.</p>
+              {says && <button className="on-panel" onClick={() => shareCard(tree, says)}><span className="ms">ios_share</span>Share</button>}
             </section>
           )}
-
-          {tree.adopter && <CallMe treeId={tree.id} treeName={tree.name} handle={tree.adopter.handle} />}
-
-          <section className="card talk">
-            <div className="row">
-              <h2><span className="ms outline">forum</span> Talk to {tree.name} · <span className="hi">बात करें</span></h2>
-              <span style={{ flex: 1 }} />
-              <button className="lang" onClick={() => setLang((l) => (l === "hi" ? "en" : "hi"))} aria-label="Switch language">
-                <b className={lang === "hi" ? "on" : ""}>हिं</b> / <b className={lang === "en" ? "on" : ""}>EN</b>
-              </button>
-            </div>
-            <div className="chips">
-              {suggestions.map((s) => (
-                <button key={s.text} className="chip" onClick={() => onAsk(s.text, s.lang)}>
-                  <span className={s.lang === "hi" ? "hi" : ""}>{s.text}</span>{s.en && <span className="muted"> ({s.en})</span>}
-                </button>
-              ))}
-            </div>
-            <div className="ask-box">
-              <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder={lang === "hi" ? "कुछ पूछें… (कल क्या होगा?)" : "Ask something… (what about tomorrow?)"} onKeyDown={(e) => e.key === "Enter" && onAsk()} />
-              <button className="round" onClick={onMic} disabled={listening} aria-label="Speak"><span className="ms">{listening ? "graphic_eq" : "mic"}</span></button>
-              <button className="round primary send" onClick={() => onAsk()} aria-label="Ask"><span className="ms">send</span></button>
-            </div>
-          </section>
         </div>
+      </div>
+
+      {says && (
+        <>
+          <Rule />
+          <section className="section reckoning">
+            <div className="section-title">
+              <h2>How {tree.name} decided today</h2>
+              <span className="hi-display">नीमू की गणना</span>
+              <span className="grow" />
+              <button className="link" onClick={() => setShowWhy((v) => !v)}>{showWhy ? "Hide the numbers" : "See every number"}</button>
+            </div>
+            <ol className="steps-line">
+              {says.steps.map((s, i) => {
+                const info = stepInfo[s.tool] ?? { en: s.tool, hi: "", icon: "calculate" };
+                return (
+                  <li key={i} className={`${i < shownSteps ? "shown" : ""} ${s.ok ? "" : "bad"}`}>
+                    <span className="step-num num">{i + 1}</span>
+                    <div>
+                      <h3><span className="ms">{info.icon}</span> {info.en}</h3>
+                      <p className="hi small step-hi">{info.hi}</p>
+                      <p className="step-sum">{s.summary}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+            {showWhy && (
+              <table className="facts rise">
+                <tbody>{says.facts.map((f) => <tr key={f.label}><td>{f.label}</td><td>{f.value}</td></tr>)}</tbody>
+              </table>
+            )}
+            <p className="fine-print">
+              {says.spokenBy === "template"
+                ? "Today's sentence is a fixed template while the AI is offline. Every number above is computed from Open-Meteo weather by the water-balance engine."
+                : "Every number comes from the water-balance engine on real Open-Meteo weather; the AI only chooses the words."}
+              {voiceVia === "browser" && " In demo mode the browser's voice stands in for Amazon Polly."}
+            </p>
+          </section>
+        </>
+      )}
+
+      <Rule />
+
+      <section className="vitals">
+        <div className="vital wide">
+          <div className="vital-label">Vitality <span className="hi">· स्वास्थ्य</span></div>
+          <div className="vital-num num">{tree.health}<small>/100</small></div>
+          <div className="vine"><div className="vine-fill" style={{ width: `${tree.health}%` }} /></div>
+        </div>
+        <div className="vital">
+          <div className="vital-label">Days in a row <span className="hi">· निरंतरता</span></div>
+          <div className="vital-num num">{tree.streakDays}</div>
+        </div>
+        <div className="vital">
+          <div className="vital-label">Litres saved by rain <span className="hi">· बचाया</span></div>
+          <div className="vital-num num">{Math.round(tree.litresSaved)}</div>
+        </div>
+        <div className="vital">
+          <div className="vital-label">Planted <span className="hi">· रोपण</span></div>
+          <div className="vital-num small-num">{plantedLabel(tree.plantedOn)}</div>
+          <div className="muted tiny">{daysSince(tree.plantedOn)} days ago · growth {tree.growthStage} of 5</div>
+        </div>
+      </section>
+
+      <Rule />
+
+      <div className="garden-cols">
+        <div>
+          {tree.adopter ? <BuddyList treeId={tree.id} treeName={tree.name} me={tree.adopter.handle} /> : (
+            <section className="section">
+              <div className="section-title"><h2>The drive</h2><span className="hi-display">अभियान</span></div>
+              <p className="muted">{tree.name} is one of the saplings planted at {tree.location.label}. See them all as a grove.</p>
+              <a className="button" href={`?view=grove&drive=${encodeURIComponent(tree.driveId)}`}><span className="ms">forest</span>Walk through the grove</a>
+            </section>
+          )}
+          {tree.adopter && <CallMe treeId={tree.id} treeName={tree.name} handle={tree.adopter.handle} />}
+        </div>
+
+        <section className="section talk">
+          <div className="section-title">
+            <h2>Speak with {tree.name}</h2>
+            <span className="hi-display">बात करें</span>
+            <span className="grow" />
+            <div className="lang" role="group" aria-label="Language">
+              <button className={lang === "hi" ? "on" : ""} onClick={() => setLang("hi")}>हिंदी</button>
+              <button className={lang === "en" ? "on" : ""} onClick={() => setLang("en")}>English</button>
+            </div>
+          </div>
+          <div className="prompts">
+            {suggestions.map((s) => (
+              <button key={s.text} className="prompt" onClick={() => onAsk(s.text, s.lang)}>
+                <span className={s.lang === "hi" ? "hi" : ""}>{s.text}</span>{s.en && <span className="muted"> {s.en}</span>}
+              </button>
+            ))}
+          </div>
+          <div className="ask">
+            <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder={lang === "hi" ? "कुछ पूछें…" : "Ask something…"} aria-label="Your question" onKeyDown={(e) => e.key === "Enter" && onAsk()} />
+            <button className="round" onClick={onMic} disabled={listening} aria-label="Speak your question"><span className="ms">{listening ? "graphic_eq" : "mic"}</span></button>
+            <button className="round primary" onClick={() => onAsk()} aria-label="Ask"><span className="ms">arrow_upward</span></button>
+          </div>
+        </section>
       </div>
 
       {error && <div className="error" role="alert">{error}</div>}

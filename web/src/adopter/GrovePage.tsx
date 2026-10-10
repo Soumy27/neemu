@@ -1,15 +1,16 @@
-// Living Grove (हरा वन): the whole drive as a 3D forest, today, or five years on
-// if every sapling survives (a projection, labelled as one).
+// The grove (हरा वन): the whole drive as a 3D forest in a wide arch, today,
+// or five years on if every sapling survives (a projection, labelled as one).
 
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { Drive, TreeStatus } from "../api/types";
+import { Arch, Rule } from "../shell/Ornament";
 import { Shell } from "../shell/Shell";
 import { nameHi, statusWords } from "../shell/words";
 import "./adopter.css";
 import { GroveScene } from "./GroveScene";
 
-const dot: Record<TreeStatus, string> = { fine: "#43a047", thirsty: "#f59e0b", no_proof: "#ea580c", likely_dead: "#6b7280" };
+const order: TreeStatus[] = ["fine", "thirsty", "no_proof", "likely_dead"];
 
 export function GrovePage({ driveId }: { driveId: string }) {
   const [drive, setDrive] = useState<Drive | null>(null);
@@ -26,58 +27,53 @@ export function GrovePage({ driveId }: { driveId: string }) {
 
   return (
     <Shell tab="grove" driveId={driveId}>
-      <div className="near-head">
+      <div className="grove-head">
         <div>
-          <span className="pill mint"><span className="ms outline">forest</span>Living Grove · 3D</span>
-          <h1 className="near-title" style={{ marginTop: 8 }}><span className="hi">हरा वन</span> · {drive?.name ?? "The drive"}</h1>
-          <p className="muted">Every sapling at its real spot, as tall as it has grown, as green as it is healthy. Drag to walk around, tap a tree.</p>
+          <h1>{drive?.name ?? "The grove"}</h1>
+          <span className="hi-display">हरा वन · every sapling at its place, as tall as it has grown</span>
         </div>
-        <div className="row wrap">
-          <button className={!future ? "primary" : ""} onClick={() => setFuture(false)}><span className="ms">today</span>Today · <span className="hi">आज</span></button>
-          <button className={future ? "primary" : ""} onClick={() => setFuture(true)}><span className="ms">update</span>5 years later · <span className="hi">5 साल बाद</span></button>
+        <div className="seg" role="group" aria-label="When">
+          <button className={!future ? "on" : ""} onClick={() => setFuture(false)}>Today <span className="hi">· आज</span></button>
+          <button className={future ? "on" : ""} onClick={() => setFuture(true)}>Five years on <span className="hi">· 5 साल बाद</span></button>
         </div>
       </div>
 
       {drive && (
-        <div className="grove-summary">
-          {(["fine", "thirsty", "no_proof", "likely_dead"] as TreeStatus[]).map((s) => (
-            <div key={s} className="stat-tile">
-              <span className="eyebrow" style={{ color: dot[s] }}><span className="ms">{statusWords[s].icon}</span>{statusWords[s].en} · <span className="hi">{statusWords[s].hi}</span></span>
-              <strong>{drive.counts[s]}</strong>
+        <div className="census">
+          {order.map((s) => (
+            <div key={s}>
+              <span className={`mark ${s}`}>{statusWords[s].en} <span className="hi">· {statusWords[s].hi}</span></span>
+              <strong className="num">{drive.counts[s]}</strong>
             </div>
           ))}
         </div>
       )}
 
-      <div className="grove-stage">
+      <Arch className="grove-arch">
         {!drive ? (
           <div className="tree-loading"><span className="ms">forest</span><span>{error ?? "Planting the grove…"}</span></div>
         ) : (
           <GroveScene trees={drive.trees} future={future} selected={picked} onPick={(id) => setPicked(id || null)} />
         )}
-        {future && <div className="grove-tip pill sky"><span className="ms">info</span>Projection: every sapling grown and healthy. Today, {alive} of {drive?.trees.length ?? 0} are alive.</div>}
+        {future && drive && <div className="grove-note">A projection: every sapling grown and healthy. Today, {alive} of {drive.trees.length} are alive.</div>}
         {tree && (
-          <section className="card grove-picked rise">
-            <div className="name-row">
-              <div>
-                <h2 style={{ margin: 0 }}>{tree.name} · <span className="hi">{nameHi(tree.name)}</span></h2>
-                <p className="muted small">#{tree.id.split("-").pop()} · {tree.species.split(" (")[0]}</p>
-              </div>
-              <span className="pill" style={{ background: dot[tree.status], color: "#fff" }}>{statusWords[tree.status].en}</span>
-            </div>
-            <p className="small">Health {tree.health}/100 · stage {tree.growthStage} of 5{tree.adopter ? ` · cared for by ${tree.adopter.handle}` : " · needs an adopter"}</p>
-            <a className="button primary block" href={`?tree=${encodeURIComponent(tree.id)}`}><span className="ms">potted_plant</span>Open {tree.name}</a>
-          </section>
+          <div className="grove-picked rise">
+            <div className="hi-display" style={{ fontSize: "1.6rem", color: "var(--emerald)" }}>{nameHi(tree.name)}</div>
+            <h3>{tree.name} <span className="tree-id num">№ {tree.id.split("-").pop()}</span></h3>
+            <p className={`mark ${tree.status}`}>{statusWords[tree.status].en}</p>
+            <p className="muted small">Vitality <span className="num">{tree.health}</span>/100 · growth {tree.growthStage} of 5 · {tree.adopter ? `with ${tree.adopter.handle}` : "needs a guardian"}</p>
+            <a className="button primary block" href={`?tree=${encodeURIComponent(tree.id)}`}>Visit {tree.name}</a>
+          </div>
         )}
-      </div>
+      </Arch>
 
-      <div className="grove-legend" style={{ marginTop: 14 }}>
-        {(["fine", "thirsty", "no_proof", "likely_dead"] as TreeStatus[]).map((s) => (
-          <span key={s} className="pill"><span className="dot" style={{ background: dot[s] }} />{statusWords[s].en}</span>
-        ))}
-        <span className="pill"><span className="ms outline">height</span>Height = growth stage</span>
-        <span className="pill"><span className="ms outline">eco</span>Leaf colour = health</span>
+      <div className="legend">
+        <span>Drag to walk around · tap a tree</span>
+        <span>Height is growth stage</span>
+        <span>Leaf colour is health</span>
+        <span>The ring under each tree is its status</span>
       </div>
+      <Rule />
     </Shell>
   );
 }
