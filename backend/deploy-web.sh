@@ -3,11 +3,13 @@
 # Usage: backend/deploy-web.sh        (run from anywhere; needs the AWS CLI signed in)
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# WEB_ROOT: a different checkout to build from (default: this one).
+# AMPLIFY_BRANCH: publish to a preview address instead of the main one, e.g. AMPLIFY_BRANCH=preview.
+ROOT="${WEB_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 REGION="us-west-2"
 STACK="neemu"
 APP_NAME="neemu"
-BRANCH="main"
+BRANCH="${AMPLIFY_BRANCH:-main}"
 
 output() {
   aws cloudformation describe-stacks --stack-name "$STACK" --region "$REGION" \
@@ -20,8 +22,9 @@ WEB_CLIENT_ID=$(output WebClientId)
 APP_ID=$(aws amplify list-apps --region "$REGION" --query "apps[?name=='$APP_NAME'].appId | [0]" --output text)
 if [ "$APP_ID" = "None" ] || [ -z "$APP_ID" ]; then
   APP_ID=$(aws amplify create-app --name "$APP_NAME" --region "$REGION" --platform WEB --query app.appId --output text)
-  aws amplify create-branch --app-id "$APP_ID" --branch-name "$BRANCH" --region "$REGION" >/dev/null
 fi
+aws amplify get-branch --app-id "$APP_ID" --branch-name "$BRANCH" --region "$REGION" >/dev/null 2>&1 \
+  || aws amplify create-branch --app-id "$APP_ID" --branch-name "$BRANCH" --region "$REGION" >/dev/null
 APP_URL="https://$BRANCH.$APP_ID.amplifyapp.com"
 
 cd "$ROOT/web"

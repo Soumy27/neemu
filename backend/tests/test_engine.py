@@ -72,6 +72,13 @@ def test_unanswered_asks_become_no_proof_then_the_tree_dies():
     assert e.status_of(days[-1]) == "likely_dead" and days[-1].health == 0.0
 
 
+def test_health_falls_every_day_an_ask_goes_unanswered():
+    days = e.simulate(dry(12), 0.5, never)
+    asking = [d for d in days if d.unanswered_asks > 0]
+    assert all(b.health < a.health for a, b in zip(asking, asking[1:]))
+    assert asking[5].health < 90        # six days of asking is visibly worse than healthy
+
+
 def test_cared_for_tree_stays_healthy_and_keeps_its_streak():
     days = e.simulate(dry(30), 0.5, always, streak_from=D0)
     assert e.status_of(days[-1]) == "fine"
