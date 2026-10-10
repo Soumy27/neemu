@@ -3,7 +3,7 @@
 // 40+ saplings stay fast. "future" shows every sapling grown and healthy.
 
 import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
-import { ContactShadows, Html, OrbitControls, Sky } from "@react-three/drei";
+import { ContactShadows, Html, OrbitControls } from "@react-three/drei";
 import { useMemo, useState } from "react";
 import * as THREE from "three";
 import type { Tree } from "../api/types";
@@ -19,8 +19,13 @@ function place(trees: Tree[], future: boolean): Placed[] {
   const lng0 = trees.reduce((s, t) => s + t.location.lng, 0) / trees.length;
   const k = Math.cos((lat0 * Math.PI) / 180);
   const pts = trees.map((t) => ({ tree: t, x: (t.location.lng - lng0) * 111_320 * k, z: -(t.location.lat - lat0) * 111_320 }));
+  // A real drive is far wider than its saplings are tall, so they would be specks.
+  // Keep the arrangement, shrink the distances to a walkable grove.
+  const far = Math.max(1, ...pts.map((p) => Math.hypot(p.x, p.z)));
+  const fit = (future ? 4.5 : 3.2) * Math.sqrt(trees.length) / far;
+  pts.forEach((p) => { p.x *= fit; p.z *= fit; });
   // Keep real positions, but never let two trees overlap.
-  const min = future ? 4.2 : 2.6;
+  const min = future ? 4.4 : 2.4;
   for (let pass = 0; pass < 6; pass++) {
     for (const a of pts) for (const b of pts) {
       if (a === b) continue;
@@ -87,14 +92,14 @@ function Grove({ placed, selected, onPick }: { placed: Placed[]; selected: strin
 
 export function GroveScene({ trees, future, selected, onPick }: { trees: Tree[]; future: boolean; selected: string | null; onPick: (id: string) => void }) {
   const placed = useMemo(() => place(trees, future), [trees, future]);
-  const span = Math.max(12, ...placed.map((p) => Math.hypot(p.x, p.z))) ;
+  const span = Math.max(8, ...placed.map((p) => Math.hypot(p.x, p.z)));
   return (
-    <Canvas shadows camera={{ position: [span * 0.9, span * 0.7, span * 1.1], fov: 42 }} dpr={[1, 1.75]}>
-      <Sky sunPosition={[40, 30, 20]} turbidity={5} rayleigh={1.4} />
+    <Canvas shadows gl={{ alpha: true }} camera={{ position: [span * 0.75, span * 0.55, span * 0.95], fov: 40 }} dpr={[1, 1.75]}>
+      <fog attach="fog" args={["#e9f4e2", span * 1.6, span * 3.2]} />
       <hemisphereLight args={["#fff8e7", "#6d8a4f", 1]} />
       <directionalLight position={[30, 40, 20]} intensity={1.8} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow onClick={() => onPick("")}>
-        <circleGeometry args={[span * 1.6, 64]} />
+        <circleGeometry args={[span * 4, 64]} />
         <meshStandardMaterial color="#a7c77c" roughness={1} />
       </mesh>
       <Grove placed={placed} selected={selected} onPick={onPick} />

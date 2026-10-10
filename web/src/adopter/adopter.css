@@ -205,7 +205,7 @@ button.cam-side { width: 48px; height: 48px; min-height: 48px; padding: 0; borde
 .help-strip { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 16px 18px; border-radius: 26px; background: var(--mint); margin-top: 22px; }
 
 /* living grove */
-.grove-stage { position: relative; height: min(70vh, 620px); border-radius: 28px; overflow: hidden; background: linear-gradient(#cfe8ff, #eaf6e3); box-shadow: var(--shadow-1); }
+.grove-stage { position: relative; height: min(70vh, 620px); border-radius: 28px; overflow: hidden; background: linear-gradient(#bfe3ff 0%, #e3f2ff 40%, #e9f4e2 60%); box-shadow: var(--shadow-1); }
 .grove-legend { display: flex; gap: 8px; flex-wrap: wrap; }
 .grove-legend .dot { width: 10px; height: 10px; border-radius: 99px; display: inline-block; }
 .grove-tip { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 2; }
