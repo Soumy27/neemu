@@ -44,8 +44,8 @@ def adopt(tree_id, query, body):
 def _voice(meta: dict, states, ahead, question, says: dict) -> dict:
     """Let the agent say it. On any failure keep the fixed sentence and say so in the steps."""
     try:
-        hi, en, steps = agent.run(meta, states, ahead, question)
-        says.update(textHi=hi, textEn=en, steps=steps, spokenBy="agent")
+        hi, en, steps, model = agent.run(meta, states, ahead, question)
+        says.update(textHi=hi, textEn=en, steps=steps, spokenBy="agent", spokenWith=model)
     except agent.AgentUnavailable as e:
         print(f"AGENT unavailable for {meta['id']}: {str(e)[:200]}")
     except agent.NotGrounded as e:
@@ -64,6 +64,7 @@ def says_for(meta: dict, as_of, replay: bool, audio: bool = True, question: str 
         "ask": s.ask if (s.ask != "water" or needs) else "none",
         "heatwave": engine.heat_day(s),
         "spokenBy": "template",
+        "spokenWith": None,
         "asOf": as_of.isoformat(),
         "replay": replay,
         "litres": s.litres_asked if needs else 0,

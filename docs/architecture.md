@@ -60,7 +60,7 @@ flowchart TB
 
 **Code decides every number and every verdict.** Whether a sapling needs water, how many litres, its health, its status, whether a proof is accepted: all of it is computed in `engine.py` and `proofs.py`.
 
-**The agent only chooses tools and writes sentences.** Its tools return the engine's numbers. Before its reply is used, every number in it is checked against what the tools returned; a reply with a number from nowhere is discarded and a fixed sentence is used instead. The response says which happened (`spokenBy: "agent"` or `"template"`).
+**The agent only chooses tools and writes sentences.** It runs on Amazon Bedrock. If Bedrock refuses the call, the same Strands agent, with the same tools and the same number check, can run on a second model provider whose key is kept in Parameter Store; the response names the model that spoke (`spokenWith`). Its tools return the engine's numbers. Before its reply is used, every number in it is checked against what the tools returned; a reply with a number from nowhere is discarded and a fixed sentence is used instead. The response says which happened (`spokenBy: "agent"` or `"template"`).
 
 **People decide "is this the same tree".** Nothing is attached to a tree. A proof is accepted when the phone was within reach of the sapling and the image has not been sent before, both checked in code. A share of proofs then go to a review queue where the organiser or a neighbouring adopter compares the photo with the reference.
 
