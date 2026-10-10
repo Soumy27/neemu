@@ -12,10 +12,9 @@
 
 .arch { position: relative; color: var(--gold); }
 .arch-clip { position: absolute; inset: 0; overflow: hidden; }
-.arch-line { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.arch-line { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
 .arch-line path { stroke: var(--gold); stroke-width: 1.5px; }
-.arch-line.inner { inset: 9px; width: calc(100% - 18px); height: calc(100% - 18px); opacity: 0.55; }
-.arch-line.inner path { stroke-width: 1px; }
+.arch-line path.inner { stroke-width: 1px; opacity: 0.55; }
 .arch-finial { position: absolute; left: 50%; top: -20px; width: 22px; height: 22px; transform: translateX(-50%); color: var(--gold); }
 
 .tree-arch { height: 600px; }

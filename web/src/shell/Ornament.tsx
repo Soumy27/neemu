@@ -1,7 +1,7 @@
 // Mughal garden ornaments: the eight-pointed star (khatim), a gold rule,
 // the arch that frames the tree, and the arch-and-sapling mark.
 
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 export const Star = ({ className = "star" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
@@ -14,28 +14,45 @@ export const Rule = ({ left = false }: { left?: boolean }) => (
   <div className={`rule ${left ? "left" : ""}`} role="separator"><Star /></div>
 );
 
-// A pointed Mughal arch. The same path clips the content and draws the gold outline,
-// so the frame stays aligned at any size.
-const ARCH = "M0,100 L0,30 C0,17 20,9 36,5.5 C44,3.8 48,2.2 50,0 C52,2.2 56,3.8 64,5.5 C80,9 100,17 100,30 L100,100 Z";
-
-export const archMask = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'><path d='${ARCH}' fill='black'/></svg>`)}")`;
+// A pointed Mughal arch, drawn from the frame's real size so the curve keeps its
+// proportion at any width (the shoulder follows the width, not the height).
+// The same path clips the content and draws the two gold lines.
+function archPath(w: number, h: number, x = 0, y = 0) {
+  const s = Math.min(w * 0.46, h * 0.5);
+  const X = (f: number) => (x + w * f).toFixed(1);
+  const Y = (f: number) => (y + s * f).toFixed(1);
+  return `M${X(0)},${(y + h).toFixed(1)} L${X(0)},${Y(1)} C${X(0)},${Y(0.57)} ${X(0.2)},${Y(0.3)} ${X(0.36)},${Y(0.183)} C${X(0.44)},${Y(0.127)} ${X(0.48)},${Y(0.073)} ${X(0.5)},${Y(0)} C${X(0.52)},${Y(0.073)} ${X(0.56)},${Y(0.127)} ${X(0.64)},${Y(0.183)} C${X(0.8)},${Y(0.3)} ${X(1)},${Y(0.57)} ${X(1)},${Y(1)} L${X(1)},${(y + h).toFixed(1)} Z`;
+}
 
 export function Arch({ children, className = "" }: { children: ReactNode; className?: string }) {
-  const mask = { WebkitMaskImage: archMask, maskImage: archMask, WebkitMaskSize: "100% 100%", maskSize: "100% 100%" };
+  const box = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const measure = () => setSize({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const outer = size ? archPath(size.w, size.h) : "";
+  const inner = size ? archPath(size.w - 18, size.h - 18, 9, 9 + Math.min(size.w * 0.46, size.h * 0.5) * 0.04) : "";
   return (
-    <div className={`arch ${className}`}>
-      <div className="arch-clip" style={mask}>{children}</div>
-      <svg className="arch-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        <path d={ARCH} fill="none" stroke="currentColor" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-      </svg>
-      <svg className="arch-line inner" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        <path d={ARCH} fill="none" stroke="currentColor" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-      </svg>
+    <div ref={box} className={`arch ${className}`}>
+      <div className="arch-clip" style={size ? { clipPath: `path("${outer}")` } : { visibility: "hidden" }}>{children}</div>
+      {size && (
+        <svg className="arch-line" width={size.w} height={size.h} viewBox={`0 0 ${size.w} ${size.h}`} aria-hidden="true">
+          <path d={outer} fill="none" />
+          <path className="inner" d={inner} fill="none" />
+        </svg>
+      )}
       <Star className="arch-finial" />
     </div>
   );
 }
-
 
 export const BrandMark = ({ className = "brand-mark" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 34 40" aria-hidden="true">
