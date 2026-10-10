@@ -2,7 +2,7 @@
 // Beside it: its name, what it says today, and the one thing to do. Below: how it
 // decided, its vital signs, and the people around it.
 
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { api, partlyLive, SourceError, usingMock } from "../api/client";
 import { scenario, scenarioLabel } from "../api/mock";
 import type { NeemuSays, Tree } from "../api/types";
@@ -13,7 +13,10 @@ import "./adopter.css";
 import { BuddyList } from "./Buddies";
 import { CallMe } from "./CallMe";
 import { shareCard } from "./shareCard";
-import { Tree3D, type Weather } from "./Tree3D";
+import type { Weather } from "./Tree3D";
+
+// The 3D tree (and its ~3 MB library) loads after the words, so Neemu speaks first.
+const Tree3D = lazy(() => import("./Tree3D").then((m) => ({ default: m.Tree3D })));
 import { listen, speak } from "./voice";
 
 const stepInfo: Record<string, { en: string; hi: string; icon: string }> = {
@@ -147,7 +150,9 @@ export function AdopterApp({ treeId }: { treeId: string }) {
       <div className="court">
         <div className="court-tree">
           <Arch className={`tree-arch ${weather}`}>
-            <Tree3D seed={tree.id} stage={tree.growthStage} health={tree.health} wetness={wetness} watering={celebrate} weather={weather} />
+            <Suspense fallback={<div className="tree-loading"><span className="ms">potted_plant</span><span>Growing the tree…</span></div>}>
+              <Tree3D seed={tree.id} stage={tree.growthStage} health={tree.health} wetness={wetness} watering={celebrate} weather={weather} />
+            </Suspense>
           </Arch>
           <div className="plaque">
             <span className={`mark ${tree.adopter ? tree.status : litres > 0 ? "thirsty" : "plain"}`}>

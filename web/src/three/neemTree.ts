@@ -4,6 +4,9 @@
 
 import { Tree } from "@dgreenheck/ez-tree";
 import * as THREE from "three";
+import { heightFor, leafTint } from "./look";
+
+export { heightFor, leafTint, mistColour, prefersDark } from "./look";
 
 export interface TreeLook {
   seed: string;
@@ -17,18 +20,6 @@ function seedOf(text: string) {
   return s;
 }
 
-// Tints multiply the leaf texture, so they are lighter than the colour you see.
-const green = new THREE.Color("#b9f58a");
-const yellow = new THREE.Color("#f2d27a");
-const brown = new THREE.Color("#b08a5a");
-
-export function leafTint(health: number) {
-  const h = Math.max(0, Math.min(1, health / 100));
-  return h > 0.5 ? yellow.clone().lerp(green, (h - 0.5) * 2) : brown.clone().lerp(yellow, h * 2);
-}
-
-// Height of the finished tree in scene units (1 unit is about 1 metre).
-export const heightFor = (stage: number) => 0.9 + stage * 0.55;
 
 export function buildTree({ seed, stage, health }: TreeLook, quality: "hero" | "forest" = "hero"): Tree {
   const t = new Tree();
@@ -50,7 +41,7 @@ export function buildTree({ seed, stage, health }: TreeLook, quality: "hero" | "
   const keep = Math.max(0.12, health / 100);
   o.leaves.count = Math.max(2, Math.round(o.leaves.count * 1.4 * keep * (quality === "forest" ? 0.6 : 1)));
   o.leaves.size *= 1.25;
-  o.leaves.tint = leafTint(health).getHex();
+  o.leaves.tint = leafTint(health);
   o.bark.tint = 0xc9b8a0;
   t.generate();
 
@@ -68,12 +59,3 @@ export function buildTree({ seed, stage, health }: TreeLook, quality: "hero" | "
   });
   return t;
 }
-
-// The mist at the horizon matches the arch's sky in light and dark themes.
-export function mistColour(weather: "clear" | "hot" | "rain" = "clear") {
-  const dark = typeof matchMedia !== "undefined" && matchMedia("(prefers-color-scheme: dark)").matches;
-  if (dark) return weather === "hot" ? "#5e5233" : weather === "rain" ? "#3f5452" : "#3d5a4c";
-  return weather === "hot" ? "#f3e6cf" : weather === "rain" ? "#d3e0e0" : "#dceee3";
-}
-
-export const prefersDark = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-color-scheme: dark)").matches;

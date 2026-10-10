@@ -136,6 +136,7 @@ a { color: var(--emerald); text-underline-offset: 3px; }
   overflow: hidden;
   width: 1em;
 }
+html:not(.icons-ready) .ms { visibility: hidden; }
 .ms.fill { font-variation-settings: "FILL" 1, "wght" 300, "opsz" 24; }
 
 /* ---------- ornaments ---------- */

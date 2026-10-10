@@ -1,10 +1,10 @@
 // A small drawn sapling for cards: height from growth stage, leaf colour from health.
 
-import { leafTint } from "../three/neemTree";
+import { cssHex, leafTint } from "../three/look";
 
 export function SaplingArt({ stage, health, photo }: { stage: number; health: number; photo?: string | null }) {
   if (photo) return <div className="sapling-art"><img src={photo} alt="" /></div>;
-  const c = `#${leafTint(health).multiplyScalar(0.72).getHexString()}`;
+  const c = cssHex(leafTint(health, 0.72));
   const top = 92 - stage * 11;
   const r = 10 + stage * 3.5;
   return (

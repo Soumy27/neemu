@@ -233,3 +233,21 @@ a.button.claim { min-height: 38px; padding: 6px 14px; border-color: color-mix(in
 a.button.claim:hover { background: var(--emerald); border-color: var(--emerald); color: var(--on-emerald); }
 .map-frame .maplibregl-canvas { filter: saturate(0.55) sepia(0.12) hue-rotate(40deg) brightness(1.02); }
 @media (prefers-color-scheme: dark) { .map-frame .maplibregl-canvas { filter: saturate(0.5) brightness(0.8) contrast(1.05); } }
+
+/* Phones: name on one line above a shorter arch, so Neemu's words are in the first view. */
+@media (max-width: 600px) {
+  .court { display: flex; flex-direction: column; gap: 18px; }
+  .court-words { display: contents; }
+  .title-block { order: -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
+  .tree-hi { font-size: 2.6rem; }
+  .tree-en { font-size: 1.5rem; }
+  .tree-meta { flex-basis: 100%; font-size: 0.85rem; margin-top: 0; }
+  .court-tree { order: 0; }
+  .tree-arch { height: 300px; }
+  .plaque { margin-top: 10px; font-size: 0.82rem; gap: 4px 10px; }
+  .voice { order: 1; }
+  .panel.act { order: 2; }
+  .inscription { font-size: 1.3rem; padding-left: 22px; }
+  .inscription::before { font-size: 3rem; top: -10px; }
+  .translation, .voice-actions { margin-left: 22px; }
+}
