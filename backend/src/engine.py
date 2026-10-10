@@ -33,10 +33,10 @@ RAW_MM = DEPLETION_FRACTION * TAW_MM                             # readily avail
 HEAT_DAY_C = 40.0          # IMD's plains threshold. A "heat day", not a declared heatwave.
 
 START_HEALTH = 70.0
-HEALTH_GAIN = 3.0          # per day with no stress
-HEALTH_LOSS = 8.0          # per day at full stress, before the gain: about two weeks from healthy to nothing
-DEAD_HEALTH = 5.0
-DEAD_AFTER_DAYS = 3        # this many days in a row at or below DEAD_HEALTH
+HEALTH_GAIN = 3.0          # per day with water readily available
+HEALTH_LOSS_BASE = 1.0     # per day once the sapling is short of water at all,
+HEALTH_LOSS_STRESS = 7.0   # plus this much at full stress. A sapling asking for six days is visibly worse off.
+DEAD_HEALTH = 5.0          # at or below this the sapling is shown as likely dead, and stays so
 NO_PROOF_AFTER_DAYS = 3    # asks in a row with no accepted proof
 
 
@@ -104,7 +104,6 @@ def simulate(
     unanswered = 0
     streak = 0
     saved = 0.0
-    low_days = 0
     dead = False
     prev_rain = 0.0
     out = []
@@ -137,9 +136,9 @@ def simulate(
             streak += 1
 
         stress = 1.0 - stress_factor(end)
-        health = min(100.0, max(0.0, health + HEALTH_GAIN - HEALTH_LOSS * stress))
-        low_days = low_days + 1 if health <= DEAD_HEALTH else 0
-        dead = dead or low_days >= DEAD_AFTER_DAYS
+        change = HEALTH_GAIN if stress <= 0 else -(HEALTH_LOSS_BASE + HEALTH_LOSS_STRESS * stress)
+        health = min(100.0, max(0.0, health + change))
+        dead = dead or health <= DEAD_HEALTH
         if dead:
             health = 0.0
 
