@@ -29,10 +29,19 @@ export function NearbyPicker({ driveId }: { driveId: string }) {
       api.nearby(driveId, lat, lng).then(setTrees).catch(() => setWhere({ text: "Couldn't load the saplings. Check your connection.", accuracy: null }));
     };
     if (usingMock) return load(DEMO_POS.lat, DEMO_POS.lng, "Demo: as if standing at DTU, Gate 3", null);
-    navigator.geolocation?.getCurrentPosition(
+    // No location (blocked, or a laptop): still show the drive, sorted from its middle, and say so.
+    const fromMiddle = () =>
+      api.getDrive(driveId).then((d) => {
+        const n = d.trees.length || 1;
+        const lat = d.trees.reduce((s, t) => s + t.location.lat, 0) / n;
+        const lng = d.trees.reduce((s, t) => s + t.location.lng, 0) / n;
+        load(lat, lng, "Location is off, so these are sorted from the middle of the drive. Allow location to sort from where you stand.", null);
+      }).catch(() => setWhere({ text: "Couldn't load the saplings. Check your connection.", accuracy: null }));
+    if (!navigator.geolocation) return void fromMiddle();
+    navigator.geolocation.getCurrentPosition(
       (p) => load(p.coords.latitude, p.coords.longitude, "Your location", p.coords.accuracy),
-      () => setWhere({ text: "Allow location so we can show the saplings around you.", accuracy: null }),
-      { enableHighAccuracy: true, timeout: 10000 },
+      () => fromMiddle(),
+      { enableHighAccuracy: true, timeout: 8000 },
     );
   }, [driveId]);
 
@@ -99,7 +108,7 @@ export function NearbyPicker({ driveId }: { driveId: string }) {
           return (
             <section key={t.id} className={`card sapling-card ${t.adopter ? "taken" : ""} ${t.id === selected ? "picked" : ""}`}>
               <div className="sapling-top">
-                <span className="pill sky"><span className="ms">near_me</span>{t.distanceM} m away</span>
+                <span className="pill sky"><span className="ms">near_me</span>{Math.round(t.distanceM)} m away</span>
                 {t.adopter
                   ? <span className="pill mint"><span className="ms">verified</span>Adopted by {t.adopter.handle} · {s.en}</span>
                   : litres > 0 ? <span className="pill amber"><span className="ms">water_drop</span>Needs {litres} L today</span>

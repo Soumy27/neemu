@@ -215,3 +215,9 @@ button.cam-side { width: 48px; height: 48px; min-height: 48px; padding: 0; borde
 .grove-summary .stat-tile strong { font: 700 28px/1.1 var(--font-head); display: block; }
 .how { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; font-size: 13.5px; color: var(--on-variant); }
 .sapling-card.picked { box-shadow: 0 0 0 3px var(--primary-bright), var(--shadow-1); }
+@media (max-width: 600px) {
+  .overlay.tl { right: 14px; }
+  .overlay.tr { top: 54px; left: 14px; right: auto; justify-content: flex-start; }
+  .speaks blockquote { font-size: 20px; }
+  .speaks { margin: -22px 10px 10px; padding: 18px; }
+}
