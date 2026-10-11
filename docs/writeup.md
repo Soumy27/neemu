@@ -1,6 +1,6 @@
-# Neemu: submission write-up (draft)
+# Neemu: submission write-up
 
-Draft by aditya-claude, 9 Oct 2026. For the team to edit. The submission form's fields are not visible yet, so this follows what the rules ask for: the problem, the build, where AWS fits, and the AI coding tools used. Anything in [square brackets] still has to be filled in or checked.
+By the Neemu team (Soumy, Aditya, Pratham). Follows what the rules ask for: the problem, the build, where AWS fits, and the AI tools used. The only blank left is the video link.
 
 **Track:** Heat and Water.
 
@@ -17,6 +17,7 @@ Every monsoon, colleges, housing societies and city drives plant saplings. Then 
 - If rain has covered it, the sapling says "don't come today" and counts the litres saved.
 - The adopter waters it and sends a photo. Code checks the phone was at the sapling and that the photo is new. People check it is the same tree: the organiser, or a neighbouring adopter, compares it with the reference photo.
 - The organiser sees every sapling in the drive: fine, thirsty today, asked and unanswered, or likely dead, and can remind the adopters who have not come.
+- The whole drive can be walked as a 3D grove: every sapling at its place, as tall as it has grown, its leaves as green as it is healthy. "Five years on" shows the forest the drive becomes if every sapling survives, labelled as a projection.
 
 Nothing is attached to any tree. A volunteer walks the row once with a phone to register the saplings.
 
@@ -27,7 +28,11 @@ Nothing is attached to any tree. A volunteer walks the row once with a phone to 
 
 ## The game
 
-The sapling is a 3D tree that grows with care and wilts without it, with streaks, litres saved, and heat days (40 °C or more) when every adopter in the drive is asked at once.
+The sapling is a realistic 3D tree (procedurally generated, so each sapling is its own) that grows with care and wilts without it, with streaks, litres saved, and heat days (40 °C or more) when every adopter in the drive is asked at once.
+
+## Design
+
+A Mughal garden (charbagh): emerald, peacock-teal and antique gold, the tree framed in a pointed arch, gold rules with an eight-pointed star between sections. Hindi comes first, set in Tiro Devanagari Hindi; English follows in Cormorant Garamond. It follows the phone's light or dark setting, and the 3D scenes switch to dusk light at night. Built for phones first: the first screen loads in about 87 KB, and the tree's sentence is in the first view.
 
 ## How it works
 
@@ -58,35 +63,24 @@ Diagram and detail: [`docs/architecture.md`](architecture.md).
 
 - Weather is always real (Open-Meteo).
 - The 40 saplings of the example drive, their adopters and their past care are illustrative. Their statuses are computed by running each one's care pattern against real weather.
-- [The sapling in the video is a real one, registered and watered by a team member at ___.]
 - A sapling surviving its first summer cannot be shown in a weekend. What we show is the daily loop working.
-- [If still true at submission: the Bedrock agent is deployed but our new AWS account's model quota was not enabled in time, so the sapling's sentences come from fixed templates. The app says which is which.]
+- The Bedrock agent is built and deployed, but our new AWS account's model quota was not enabled in time, so the sapling's sentences come from fixed templates. Every number is still computed by code, and the app says when a sentence is a template.
+- Sign-in (Cognito) is built but left optional: nobody completed the hosted sign-in round trip on a phone before the deadline, so the API trusts the name sent with a request.
 
 ## Links
 
 - Live: https://main.d1wy94gbpeilv8.amplifyapp.com
-- Repository: https://github.com/Soumy27/neemu [must be public before submitting]
-- Demo video: [YouTube link]
+- Repository: https://github.com/Soumy27/neemu
+- Demo video: **PASTE THE YOUTUBE LINK HERE**
 
 ## AI coding tools used
 
-Claude Code (Anthropic), by all three team members, for planning, code, tests and review. [Add any others.]
+- **Claude Code** (Anthropic), by all three team members, for planning, code, tests and review.
+- **Google Stitch**, for a first draft of the screens, which we then rebuilt and restyled in code.
 
 ## Credits
 
-Open-Meteo (weather, CC BY 4.0). FAO Irrigation and Drainage Paper 56 (the water balance method). OpenStreetMap contributors and MapLibre GL (map). three.js and React Three Fiber (3D tree). Strands Agents SDK, pywebpush. [Check the web app's package list for anything missing.]
+Open-Meteo (weather, CC BY 4.0). FAO Irrigation and Drainage Paper 56 (the water balance method). OpenStreetMap contributors and MapLibre GL JS (map, ODbL and BSD-3-Clause). three.js, React Three Fiber and drei (3D, MIT). ez-tree by Daniel Greenheck (procedural trees, MIT). qrcode (drive poster, MIT). Strands Agents SDK (Apache-2.0), pywebpush (MPL-2.0). Fonts: Cormorant Garamond, Tiro Devanagari Hindi, Mukta; icons: Material Symbols (all via Google Fonts, OFL or Apache-2.0).
 
----
 
-## Suggested shot list for the 3-minute video (soumy-claude; pratham-claude's to change)
-
-| Time | Shot | Point it makes |
-|---|---|---|
-| 0:00 to 0:12 | A real sapling, dry soil. Phone buzzes: "Neemu is thirsty". | The hook: the tree calls you. |
-| 0:12 to 0:30 | Open it. The tool steps tick, Neemu speaks Hindi, subtitle, "Why?" shows the real weather. | It reasons from real data, in the user's language. |
-| 0:30 to 0:50 | The problem in two lines: drives plant thousands, many die in the first dry months, nobody knows which. | Idea and impact. |
-| 0:50 to 1:20 | Organiser walks the row: pin, reference photo. Drive poster, WhatsApp link, "Saplings near you", adopt. | Nothing to attach to a tree; usable on the ground. |
-| 1:20 to 1:50 | Water it, take the proof photo with the ghost guide, "Accepted, 4 m from the tree". A buddy confirms "same tree". | Proof without tags; people check people. |
-| 1:50 to 2:10 | Heat-day replay (44 °C): the tree wilts, boss-day banner. Rain replay: "don't come today", litres saved. | It saves water too. |
-| 2:10 to 2:40 | Architecture diagram, then quick cuts: Step Functions run of the morning check, DynamoDB, Polly, the API. | Built on AWS, visibly. |
-| 2:40 to 3:00 | The register: "40 of 40 saplings alive". One line: who it is for, and the live link. | Close. |
+The video script is in [`docs/video-script.md`](video-script.md).
