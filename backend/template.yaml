@@ -8,6 +8,10 @@ Parameters:
     Default: "off"
     AllowedValues: ["on", "off"]
     Description: on = every write needs a Cognito sign-in. off = requests without a token are believed.
+  SignInDomainPrefix:
+    Type: String
+    Default: neemu-saplings
+    Description: First part of the Cognito sign-in address. Must be unique in the region, so change it in your own account.
   AppUrl:
     Type: String
     Default: https://main.d1wy94gbpeilv8.amplifyapp.com
@@ -75,7 +79,7 @@ Resources:
     Type: AWS::Cognito::UserPoolDomain
     Properties:
       UserPoolId: !Ref Users
-      Domain: neemu-saplings
+      Domain: !Ref SignInDomainPrefix
 
   WebClient:
     Type: AWS::Cognito::UserPoolClient
@@ -261,5 +265,5 @@ Outputs:
   SeedFunction: { Value: !Ref SeedFunction }
   UserPoolId: { Value: !Ref Users }
   WebClientId: { Value: !Ref WebClient }
-  SignInDomain: { Value: !Sub "neemu-saplings.auth.${AWS::Region}.amazoncognito.com" }
+  SignInDomain: { Value: !Sub "${SignInDomainPrefix}.auth.${AWS::Region}.amazoncognito.com" }
   MorningCheck: { Value: !Ref MorningCheck }

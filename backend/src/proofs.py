@@ -65,6 +65,17 @@ def proof_url(tree_id, query, body):
     return upload_url(f"proofs/{tree_id}")
 
 
+def position_problem(distance_m_: float | None, accuracy_m: float | None) -> str | None:
+    """Why this position does not show the person was at the sapling, or None if it does."""
+    if distance_m_ is None or accuracy_m is None:
+        return "Your phone did not share its position. Allow location and try again."
+    if accuracy_m > GATE_MAX_ACCURACY_M:
+        return f"Your phone's position is only good to {accuracy_m:.0f} m. Step into the open and try again."
+    if distance_m_ > max(GATE_MIN_M, accuracy_m):
+        return f"You are about {distance_m_:.0f} m from this sapling. Stand next to it."
+    return None
+
+
 def needs_review(proof_id: str, first: bool, accuracy_m: float) -> bool:
     """Every first proof, every vague fix, and one in five of the rest, chosen by the proof's own id."""
     if first or accuracy_m > SOFT_ACCURACY_M:
@@ -100,14 +111,11 @@ def submit(tree_id, query, body):
             reasons.append("Only this sapling's adopter, or a buddy who agreed to cover today, can send its proof.")
 
     distance = None
-    if lat is None or lng is None or accuracy is None:
-        reasons.append("Your phone did not share its position. Allow location and try again.")
-    else:
+    if lat is not None and lng is not None:
         distance = round(distance_m(lat, lng, meta["location"]["lat"], meta["location"]["lng"]), 1)
-        if accuracy > GATE_MAX_ACCURACY_M:
-            reasons.append(f"Your phone's position is only good to {accuracy:.0f} m. Step into the open and try again.")
-        elif distance > max(GATE_MIN_M, accuracy):
-            reasons.append(f"You are about {distance:.0f} m from this sapling. Stand next to it.")
+    problem = position_problem(distance, accuracy)
+    if problem:
+        reasons.append(problem)
 
     # Only an accepted proof claims its image, so a photo refused for a vague fix can be sent again.
     reused = store.get_item(f"HASH#{digest}") is not None
